@@ -18,6 +18,7 @@ class ClMQTTClient
         bool isConnected();
     private:
         bool ConnectionStatus();
+        bool Parse(const String& sIn, String& sOutMsg);
         ClATCommandSerial m_oSerial;
         Stream * m_pDbgLog {nullptr};
 };

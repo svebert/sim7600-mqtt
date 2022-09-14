@@ -15,7 +15,7 @@ namespace SIM7600MQTT
             bool getReply(const char *send, String & rsReply, uint16_t timeout = SIM7600MQTT_DEFAULT_TIMEOUT_MS);
             void println(const char* send, int nDelay=100);  
             void println(String send, int nDelay=100);  
-            bool readline(String & rsReply, uint16_t timeout = SIM7600MQTT_DEFAULT_TIMEOUT_MS);
+            bool readlines(String & rsReply, uint16_t timeout = SIM7600MQTT_DEFAULT_TIMEOUT_MS);
             int init();
         private:
             

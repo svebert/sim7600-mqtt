@@ -95,41 +95,72 @@ namespace SIM7600MQTT
 
     }
 
+    bool ClMQTTClient::Parse(const String& sIn, String& sOutMsg){
+        const String sSearchString("+CMQTTRXPAYLOAD: 0,");
+        int nPos = sIn.indexOf(sSearchString);
+        if(nPos < 0){
+            return false;
+        }
+        int nPos2 = sIn.indexOf("\n",nPos+sSearchString.length());
+        if(nPos2 < 0){
+            return false;
+        }
+
+        String sMsgLen = sIn.substring(nPos + sSearchString.length(), nPos2);    
+        //if(m_pDbgLog){m_pDbgLog->println(">>>" + sMsgLen);}    
+        int nMsgLen = atoi(sMsgLen.c_str());
+        if(sIn.length() < nPos2 + 1 + nMsgLen){
+            return false;
+        }
+        sOutMsg = sIn.substring(nPos2 + 1, nPos2 + 1 + nMsgLen);
+        //if(m_pDbgLog){m_pDbgLog->println(">>>" + sOutMsg);}  
+        return true;
+    }
+
     int ClMQTTClient::get_subscribe(String sFeed, String& rsMsg){
 
-
+        delay(250);
         String sATMsg("AT+CMQTTSUBTOPIC=0,");
         sATMsg += String(sFeed.length()) + ",1";
-        if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
-        m_oSerial.println(sATMsg.c_str());
-        m_oSerial.sendCheckReply((sFeed) .c_str());
+        //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
+        String sATReply;
+        m_oSerial.getReply(sATMsg.c_str(), sATReply);
+        if(sATReply == "+CMQTTSUBTOPIC: 0,14")
+        {
+            return 0;
+        }
+        delay(250);
+        m_oSerial.sendCheckReply(sFeed.c_str());
+        delay(250);
         m_oSerial.sendCheckReply("AT+CMQTTSUB=0");
-
-        delay(1500);
+        delay(250);
         String sFeedGet = sFeed + "/get";
         sATMsg = "AT+CMQTTTOPIC=0,";
         sATMsg += String(sFeedGet.length());
-        if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
-        m_oSerial.println(sATMsg.c_str());
-        m_oSerial.sendCheckReply((sFeedGet).c_str());
+        //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
+        m_oSerial.getReply(sATMsg.c_str(), sATReply);
+        if(sATReply == "+CMQTTTOPIC: 0,14")
+        {
+            return 0;
+        }
+        delay(250);
+        m_oSerial.sendCheckReply(sFeedGet.c_str());
 
-        m_oSerial.println("AT+CMQTTPAYLOAD=0,1");
+        m_oSerial.sendCheckReply("AT+CMQTTPAYLOAD=0,1",">");
         m_oSerial.sendCheckReply("1");
 
-        m_oSerial.println("AT+CMQTTPUB=0,1,60");
+        m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,60");
         String sMsgBack;
-        for(int i=0; i<5; i++)
-        {
-            m_oSerial.readline(sMsgBack);
-            if(m_pDbgLog){m_pDbgLog->println(sMsgBack);}
+        bool bHaveMsg = false;
+        if(m_oSerial.readlines(sMsgBack, 1500)){
+            bHaveMsg = Parse(sMsgBack, rsMsg);
         }
-
         sATMsg = "AT+CMQTTUNSUB=0,";
         sATMsg += String(sFeed.length()) + ",0";
-        if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
-        m_oSerial.println(sATMsg.c_str());
+        //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
+        m_oSerial.sendCheckReply(sATMsg.c_str(), ">");
         m_oSerial.sendCheckReply(sFeed.c_str());
-        return 0;
+        return bHaveMsg ? 0 : -1;
     }
 
     bool ClMQTTClient::isConnected() {return ConnectionStatus();}
