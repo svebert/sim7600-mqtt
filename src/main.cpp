@@ -38,23 +38,28 @@ void loop()
 			return;
 		}
 		Serial.println("ok");
-
-		// Serial.print("subscribe ... ");
-		// if(!pSim7600->subscribe("MQTT_SUB_FEED"))
-		// {
-		// 	Serial.println("failed");
-		// }
-		// Serial.println("ok");
 	}
 
 	Serial.print("publish ... ");
-	if(pSim7600->publish(MQTT_PUB_FEED, "7.5") != 0)
+	if(pSim7600->publish(MQTT_PUB_FEED, "8.5") != 0)
 	{
 			Serial.println("failed");
-			// pSim7600->disconnect();
 			delay(10000);
 			return;
 	}
 	Serial.println("ok");
+
+	Serial.print("subscribe (retained)...");
+	String sSubMsg;
+	if(pSim7600->get_subscribe(MQTT_SUB_FEED, sSubMsg) != 0)
+	{
+			Serial.println("failed");
+			delay(10000);
+			return;
+	}
+	else{
+		Serial.println(String("Message: ") + sSubMsg);
+	}
+	
 	delay(5000);
 }
