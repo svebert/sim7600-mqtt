@@ -14,13 +14,12 @@ class ClMQTTClient
         int connect(String sHost, int nPort, String sUsername, String sPassword, const char* szMQTTClientID="sven-test-mqtt-id");
         int disconnect();
         int publish(String sFeed, String sMessage);
-        int subscribe(String sFeed);
-        int get_subscribe(String* sMsg, int* pnMsg);
+        int get_subscribe(String sFeed, String& sMsg); //get retained message
         bool isConnected();
     private:
-        Stream * m_pDbgLog {nullptr};
+        bool ConnectionStatus();
         ClATCommandSerial m_oSerial;
-        bool m_bIsConnected{false};
+        Stream * m_pDbgLog {nullptr};
 };
 
 }

@@ -118,6 +118,29 @@ namespace SIM7600MQTT
         return l;
     }
 
+    bool ClATCommandSerial::readline(String & rsReply, uint16_t timeout) 
+    {
+        flushInput();
+        uint8_t l = readline(timeout);
+        if(m_pDbgLog){m_pDbgLog->print(F("\t<--- "));m_pDbgLog->println(m_aReplybuffer);}
+        if (l > 0)
+        {
+            rsReply = String(m_aReplybuffer);
+        }
+        return l > 0 ? 1 : 0;
+    }
+
+    bool ClATCommandSerial::getReply(const char *send, String & rsReply, uint16_t timeout) 
+    {
+        uint8_t l = getReply(send, timeout);
+        if (l > 0)
+        {
+            rsReply = String(m_aReplybuffer);
+        }
+
+        return l > 0 ? 1 : 0;
+    }
+
     bool ClATCommandSerial::sendCheckReply(const char *send, const char *reply, uint16_t timeout)
     {
         if (! getReply(send, timeout) )

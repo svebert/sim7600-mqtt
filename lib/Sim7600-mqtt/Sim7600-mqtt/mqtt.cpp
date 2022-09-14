@@ -4,8 +4,7 @@ namespace SIM7600MQTT
 {
     ClMQTTClient::ClMQTTClient(int nTX, int nRX, int nBaudRate, Stream *pLog) :
     m_oSerial(nTX, nRX, nBaudRate, 115200, pLog),
-    m_pDbgLog(pLog),
-    m_bIsConnected(false)
+    m_pDbgLog(pLog)
     { 
 
     }
@@ -13,6 +12,36 @@ namespace SIM7600MQTT
     ClMQTTClient::~ClMQTTClient()
     {
         disconnect();
+    }
+
+    bool ClMQTTClient::ConnectionStatus()
+    {
+        if(m_oSerial.init() != 0)
+        {
+            if(m_pDbgLog){m_pDbgLog->println("Failed to init serial");}
+            return -1;
+        }
+        String sReply;
+        bool bHaveReply = m_oSerial.getReply("AT+CMQTTDISC?", sReply);
+        if(!bHaveReply)
+        {
+            if(m_pDbgLog){m_pDbgLog->println("Failed to receive reply from AT+CMQTTDSIC?");}
+            return -2;
+        }   
+        if(sReply == "+CMQTTDISC: 0,0")
+        {
+            if(m_pDbgLog){m_pDbgLog->println("!connected!");}      
+            return true;
+        }
+        else if(sReply == "+CMQTTDISC: 0,1")
+        {
+            if(m_pDbgLog){m_pDbgLog->println("!not connected!");}      
+        }
+        else
+        {
+            if(m_pDbgLog){m_pDbgLog->println("!dunno!");}      
+        }
+        return false;
     }
 
     int ClMQTTClient::connect(String sHost, int nPort, String sUsername, String sPassword, const char* szMQTTClientID)
@@ -23,28 +52,16 @@ namespace SIM7600MQTT
             return -1;
         }
 
-        if(m_oSerial.sendCheckReply("AT+CMQTTSTART", "+CMQTTSTART: 23")) //network is already open
-        {
-            m_bIsConnected = true;
-            return 0;
-        }
+        m_oSerial.sendCheckReply("AT+CMQTTSTART");
 
         String sMsg = "AT+CMQTTACCQ=0,\"";
         sMsg += String(szMQTTClientID);
         sMsg += "\",0";
-        bool bRes = m_oSerial.sendCheckReply(sMsg.c_str());
-        if(!bRes){
-            return -2;
-        }
+        m_oSerial.sendCheckReply(sMsg.c_str());
 
         sMsg = "AT+CMQTTCONNECT=0,\"tcp://" + String(sHost) + ":" + String(nPort) + "\",90,1,\"" + String(sUsername) +"\",\"" + String(sPassword) +"\"";
-        bRes = m_oSerial.sendCheckReply(sMsg.c_str());
-        m_bIsConnected = bRes;
-        if(!bRes)
-        {
-            return -3;
-        }
-        return 0;
+        m_oSerial.sendCheckReply(sMsg.c_str());
+        return ConnectionStatus() ? 0 : -2;
     }
 
     int ClMQTTClient::disconnect()
@@ -55,14 +72,10 @@ namespace SIM7600MQTT
             return -1;
         }
 
-        bool bIsConnected = m_oSerial.sendCheckReply("AT+CMQTTDSIC?", "+CMQTTDISC:0,1");
-        if(!bIsConnected){
-            m_oSerial.sendCheckReply("AT+CMQTTDSIC=0,60");
-        }
+        m_oSerial.sendCheckReply("AT+CMQTTDISC=0,60");        
         m_oSerial.sendCheckReply("AT+CMQTTREL=0");
         m_oSerial.sendCheckReply("AT+CMQTTSTOP");
-        m_bIsConnected = false;
-        return 0;
+        return ConnectionStatus() ? -1 : 0;
     }
 
     int ClMQTTClient::publish(String sFeed, String sMessage)
@@ -82,20 +95,42 @@ namespace SIM7600MQTT
 
     }
 
-    int ClMQTTClient::subscribe(String sFeed)
-    {
-        // String sMsg("AT+CMQTTSUBTOPIC=0,");
-        // sMsg += String(sFeed.length());
-        // sMsg += ",1";
-        // m_oSerial.println(sMsg.c_str());
-        // int nRes = 0;
-        // nRes = m_oSerial.sendCheckReply(sFeed.c_str());
-        // return nRes;
+    int ClMQTTClient::get_subscribe(String sFeed, String& rsMsg){
+
+
+        String sATMsg("AT+CMQTTSUBTOPIC=0,");
+        sATMsg += String(sFeed.length()) + ",1";
+        if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
+        m_oSerial.println(sATMsg.c_str());
+        m_oSerial.sendCheckReply((sFeed) .c_str());
+        m_oSerial.sendCheckReply("AT+CMQTTSUB=0");
+
+        delay(1500);
+        String sFeedGet = sFeed + "/get";
+        sATMsg = "AT+CMQTTTOPIC=0,";
+        sATMsg += String(sFeedGet.length());
+        if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
+        m_oSerial.println(sATMsg.c_str());
+        m_oSerial.sendCheckReply((sFeedGet).c_str());
+
+        m_oSerial.println("AT+CMQTTPAYLOAD=0,1");
+        m_oSerial.sendCheckReply("1");
+
+        m_oSerial.println("AT+CMQTTPUB=0,1,60");
+        String sMsgBack;
+        for(int i=0; i<5; i++)
+        {
+            m_oSerial.readline(sMsgBack);
+            if(m_pDbgLog){m_pDbgLog->println(sMsgBack);}
+        }
+
+        sATMsg = "AT+CMQTTUNSUB=0,";
+        sATMsg += String(sFeed.length()) + ",0";
+        if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
+        m_oSerial.println(sATMsg.c_str());
+        m_oSerial.sendCheckReply(sFeed.c_str());
+        return 0;
     }
 
-    int ClMQTTClient::get_subscribe(String* sMsg, int* pnMsg){
-
-    }
-
-    bool ClMQTTClient::isConnected() {return m_bIsConnected;}
+    bool ClMQTTClient::isConnected() {return ConnectionStatus();}
 }
