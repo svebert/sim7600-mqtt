@@ -6,8 +6,14 @@ namespace SIM7600MQTT
     m_oSerial(nTX, nRX, nBaudRate, 115200, pLog),
     m_pDbgLog(pLog),
     m_bIsConnected(false)
-    { }
+    { 
 
+    }
+
+    ClMQTTClient::~ClMQTTClient()
+    {
+        disconnect();
+    }
 
     int ClMQTTClient::connect(String sHost, int nPort, String sUsername, String sPassword, const char* szMQTTClientID)
     {
@@ -43,6 +49,12 @@ namespace SIM7600MQTT
 
     int ClMQTTClient::disconnect()
     {
+        if(m_oSerial.init() != 0)
+        {
+            if(m_pDbgLog){m_pDbgLog->println("Failed to init serial");}
+            return -1;
+        }
+
         bool bIsConnected = m_oSerial.sendCheckReply("AT+CMQTTDSIC?", "+CMQTTDISC:0,1");
         if(!bIsConnected){
             m_oSerial.sendCheckReply("AT+CMQTTDSIC=0,60");
