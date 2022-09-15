@@ -4,6 +4,7 @@
 #include "sensor_bme680.h"
 
 //#define MQTT_PUB_VOLTAGE_FEED "svebert/f/voltage"
+#define CALIB_TEMP -1.5
 #define MQTT_PUB_TEMPERATURE_FEED "svebert/f/temperature"
 #define MQTT_PUB_PRESSURE_FEED "svebert/f/pressure"
 #define MQTT_PUB_HUMIDITY_FEED "svebert/f/humidity"
@@ -35,6 +36,8 @@ void setup() {
 	}
 }
 
+int gnLoopDelay{5000};
+
 void loop() 
 {
 	if(!pBME680->performReading()){
@@ -55,7 +58,7 @@ void loop()
 		Serial.println("ok");
 	}
 
-	publish_measurement(MQTT_PUB_TEMPERATURE_FEED, pBME680->temperature());
+	publish_measurement(MQTT_PUB_TEMPERATURE_FEED, pBME680->temperature() + CALIB_TEMP);
 	publish_measurement(MQTT_PUB_PRESSURE_FEED, pBME680->pressure());
 	publish_measurement(MQTT_PUB_HUMIDITY_FEED, pBME680->humidity());
 	// publish_measurement(MQTT_PUB_GASRESISTANCE_FEED, pBME680->gas_resistance());
@@ -70,7 +73,9 @@ void loop()
 	}
 	else{
 		Serial.println(String("Message: ") + sSubMsg);
+		gnLoopDelay = atoi(sSubMsg.c_str());
 	}
-
-	delay(5000);
+	gnLoopDelay = max(3000, min(120000, gnLoopDelay));
+	Serial.println(String("Wait for ") + String(gnLoopDelay) + "ms");
+	delay(gnLoopDelay);
 }
