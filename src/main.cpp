@@ -7,13 +7,14 @@
 #define MQTT_PUB_TEMPERATURE_FEED "svebert/f/temperature"
 #define MQTT_PUB_PRESSURE_FEED "svebert/f/pressure"
 #define MQTT_PUB_HUMIDITY_FEED "svebert/f/humidity"
-#define MQTT_PUB_GASRESISTANCE_FEED "svebert/f/gas_resistance"
+// #define MQTT_PUB_GASRESISTANCE_FEED "svebert/f/gas-resistance"
 #define MQTT_SUB_FEED "svebert/f/welcome-feed"
 
 
 void publish_measurement(String sFeed, float fValue){
 	Serial.print(sFeed);
-	if(pSim7600->publish(sFeed, String(fValue, 4)) != 0){
+	delay(250);
+	if(pSim7600->publish(sFeed, String(fValue, 2)) != 0){
 			Serial.println("...failed");
 	}
 	Serial.println("...ok");
@@ -57,7 +58,7 @@ void loop()
 	publish_measurement(MQTT_PUB_TEMPERATURE_FEED, pBME680->temperature());
 	publish_measurement(MQTT_PUB_PRESSURE_FEED, pBME680->pressure());
 	publish_measurement(MQTT_PUB_HUMIDITY_FEED, pBME680->humidity());
-	publish_measurement(MQTT_PUB_GASRESISTANCE_FEED, pBME680->gas_resistance());
+	// publish_measurement(MQTT_PUB_GASRESISTANCE_FEED, pBME680->gas_resistance());
 	//publish_measurement(MQTT_PUB_VOLTAGE_FEED, 10.0);
 	Serial.print("subscribe (retained)...");
 	String sSubMsg;

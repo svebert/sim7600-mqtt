@@ -23,7 +23,7 @@ class ClBME680Wrapper
             m_pBME680->setHumidityOversampling(BME680_OS_2X);
             m_pBME680->setPressureOversampling(BME680_OS_4X);
             m_pBME680->setIIRFilterSize(BME680_FILTER_SIZE_3);
-            m_pBME680->setGasHeater(320, 150); // 320*C for 150 ms
+            //m_pBME680->setGasHeater(320, 150); // 320*C for 150 ms
             return true;
         }
 
@@ -44,7 +44,7 @@ class ClBME680Wrapper
         }
         float pressure(){
             if(m_pBME680)
-                return static_cast<float>(m_pBME680->pressure)/100.0f;
+                return static_cast<float>(m_pBME680->pressure/100);
             return -1.0f;
         }
         float humidity(){
@@ -52,11 +52,11 @@ class ClBME680Wrapper
                 return m_pBME680->humidity;
             return -1.0f;
         }
-        float gas_resistance(){
-            if(m_pBME680)
-                return static_cast<float>(m_pBME680->gas_resistance)/1000.0f;
-            return -1.0f;
-        }
+        // float gas_resistance(){
+        //     if(m_pBME680)
+        //         return static_cast<float>(m_pBME680->gas_resistance/1000);
+        //     return -1.0f;
+        // }
     private: 
         Adafruit_BME680 * m_pBME680 = nullptr;
 };

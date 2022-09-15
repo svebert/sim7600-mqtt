@@ -81,7 +81,6 @@ namespace SIM7600MQTT
         sMsg += String(sFeed.length());
         m_oSerial.sendCheckReply(sMsg.c_str(), ">");
         m_oSerial.sendCheckReply(sFeed.c_str());
-
         sMsg = "AT+CMQTTPAYLOAD=0,";
         sMsg += String(sMessage.length());
         m_oSerial.sendCheckReply(sMsg.c_str(), ">");
