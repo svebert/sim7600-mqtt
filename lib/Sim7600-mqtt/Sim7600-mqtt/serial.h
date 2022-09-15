@@ -4,7 +4,7 @@
 
 #define SIM7600MQTT_DEFAULT_TIMEOUT_MS 500
 #define REPLY_OK "OK"
-
+#define BUFFERLEN 127
 namespace SIM7600MQTT
 {
     class ClATCommandSerial
@@ -23,7 +23,7 @@ namespace SIM7600MQTT
             const unsigned long m_nBaudRate;
             const unsigned long m_nBaudRateInit;
             Stream * m_pDbgLog; //serial for debugging 
-            char m_aReplybuffer[255];
+            char m_aReplybuffer[BUFFERLEN];
             bool m_bInit;
 
             inline int available(void) {return m_oSerial.available();}

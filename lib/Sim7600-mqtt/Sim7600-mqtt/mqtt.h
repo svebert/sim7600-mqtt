@@ -11,7 +11,7 @@ class ClMQTTClient
     public:
         ClMQTTClient(int nTX, int nRX, int nBaudRate=19200, Stream * pDbgLog=nullptr);
         ~ClMQTTClient();
-        int connect(String sHost, int nPort, String sUsername, String sPassword, const char* szMQTTClientID="sven-test-mqtt-id");
+        int connect(String sHost, int nPort, String sUsername, String sPassword);
         int disconnect();
         int publish(String sFeed, String sMessage);
         int get_subscribe(String sFeed, String& sMsg); //get retained message

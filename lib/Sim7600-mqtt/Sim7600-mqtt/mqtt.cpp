@@ -18,7 +18,6 @@ namespace SIM7600MQTT
     {
         if(m_oSerial.init() != 0)
         {
-            if(m_pDbgLog){m_pDbgLog->println("Failed to init serial");}
             return -1;
         }
         String sReply;
@@ -44,31 +43,28 @@ namespace SIM7600MQTT
         return false;
     }
 
-    int ClMQTTClient::connect(String sHost, int nPort, String sUsername, String sPassword, const char* szMQTTClientID)
+    int ClMQTTClient::connect(String sHost, int nPort, String sUsername, String sPassword)
     {
         if(m_oSerial.init() != 0)
         {
-            if(m_pDbgLog){m_pDbgLog->println("Failed to init serial");}
             return -1;
         }
-
+        delay(200);
         m_oSerial.sendCheckReply("AT+CMQTTSTART");
-
-        String sMsg = "AT+CMQTTACCQ=0,\"";
-        sMsg += String(szMQTTClientID);
-        sMsg += "\",0";
+        delay(200);
+        m_oSerial.sendCheckReply("AT+CMQTTACCQ=0,\"sven-860524\",0");
+        String sMsg("AT+CMQTTCONNECT=0,\"tcp://" + String(sHost) + ":" + String(nPort) + "\",90,1,\"" + String(sUsername) +"\",\"" + String(sPassword) +"\"");
+        //if(m_pDbgLog){m_pDbgLog->println(sMsg);}
         m_oSerial.sendCheckReply(sMsg.c_str());
-
-        sMsg = "AT+CMQTTCONNECT=0,\"tcp://" + String(sHost) + ":" + String(nPort) + "\",90,1,\"" + String(sUsername) +"\",\"" + String(sPassword) +"\"";
-        m_oSerial.sendCheckReply(sMsg.c_str());
-        return ConnectionStatus() ? 0 : -2;
+        delay(200);
+        return 0;
+        //return ConnectionStatus() ? 0 : -2;
     }
 
     int ClMQTTClient::disconnect()
     {
         if(m_oSerial.init() != 0)
         {
-            if(m_pDbgLog){m_pDbgLog->println("Failed to init serial");}
             return -1;
         }
 
@@ -83,15 +79,15 @@ namespace SIM7600MQTT
 
         String sMsg("AT+CMQTTTOPIC=0,");
         sMsg += String(sFeed.length());
-        m_oSerial.println(sMsg.c_str());
+        m_oSerial.sendCheckReply(sMsg.c_str(), ">");
         m_oSerial.sendCheckReply(sFeed.c_str());
 
         sMsg = "AT+CMQTTPAYLOAD=0,";
         sMsg += String(sMessage.length());
-        m_oSerial.println(sMsg.c_str());
+        m_oSerial.sendCheckReply(sMsg.c_str(), ">");
         m_oSerial.sendCheckReply(sMessage.c_str());
 
-        return m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,60") ? 0 : -1;
+        return m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,100") ? 0 : -1;
 
     }
 
@@ -149,10 +145,10 @@ namespace SIM7600MQTT
         m_oSerial.sendCheckReply("AT+CMQTTPAYLOAD=0,1",">");
         m_oSerial.sendCheckReply("1");
 
-        m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,60");
+        m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,100");
         String sMsgBack;
         bool bHaveMsg = false;
-        if(m_oSerial.readlines(sMsgBack, 1500)){
+        if(m_oSerial.readlines(sMsgBack, 2000)){
             bHaveMsg = Parse(sMsgBack, rsMsg);
         }
         sATMsg = "AT+CMQTTUNSUB=0,";

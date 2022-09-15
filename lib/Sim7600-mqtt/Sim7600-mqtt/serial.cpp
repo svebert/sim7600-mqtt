@@ -73,7 +73,7 @@ namespace SIM7600MQTT
 
         while (timeout--) 
         {
-            if (replyidx >= 254) {
+            if (replyidx >= BUFFERLEN -1) {
             //DEBUG_PRINTLN(F("SPACE"));
             break;
             }
@@ -93,7 +93,7 @@ namespace SIM7600MQTT
             m_aReplybuffer[replyidx] = c;
             //DEBUG_PRINT(c, HEX); DEBUG_PRINT("#"); DEBUG_PRINTLN(c);
 
-            if (++replyidx >= 254)
+            if (++replyidx >= BUFFERLEN -1)
                 break;
             }
 
