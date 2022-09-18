@@ -65,8 +65,7 @@ void setup() {
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
-	const String cpFeeds[3] = { MQTT_PUB_TEMPERATURE_FEED, 
-								MQTT_PUB_PRESSURE_FEED, 
+	const String cpFeeds[2] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED};
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, &Serial)){
