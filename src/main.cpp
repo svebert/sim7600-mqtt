@@ -10,13 +10,15 @@
 // #define MQTT_PUB_GASRESISTANCE_FEED "svebert/f/gas-resistance"
 #define MQTT_SUB_FEED "svebert/f/welcome-feed"
 
-#define NO_SERIAL //comment for debugging
+//#define NO_SERIAL //comment for debugging
 
 #ifndef NO_SERIAL
 #include <SoftwareSerial.h>
 #endif
 
 #ifndef NO_SERIAL
+#define PRINTF(X) Serial.print(F(X));
+#define PRINTFLN(X) Serial.println(F(X));
 #define PRINT(X) Serial.print(X);
 #define PRINTLN(X) Serial.println(X);
 #else
@@ -24,15 +26,30 @@
 #define PRINTLN(X)
 #endif
 
-void publish_measurement(String sFeed, float fValue){
+void Check_Queue(bool bReturnQueue){
+	if(!bReturnQueue)
+	{
+		if(g_pMsgQueue->m_nConnectionError == 1){
+			PRINTFLN("!!failed to connect");
+		}
+		else if(g_pMsgQueue->m_nConnectionError == 2){
+			PRINTFLN("!!failed to disconnect");
+		}
+		else{
+			if(g_pMsgQueue->m_nErrorCount > 0){
 
-	PRINT(sFeed)
-	delay(250);
-	if(pSim7600->publish(sFeed, String(fValue, 2)) != 0){
-		PRINTLN("...failed")
+				PRINTLN(String(F("!!Failed to send all messages: ")) + String(g_pMsgQueue->m_nErrorCount) + String(F("/")) + String(g_pMsgQueue->m_nPublishCount));
+			}
+			else if(g_pMsgQueue->m_nPublishCount == 0){
+				PRINTFLN("!!added to buffer");
+			}
+			else{
+				PRINTFLN("!!send");
+			}
+		}
 	}
-	PRINTLN("...ok")
 }
+
 
 void setup() {
 #ifndef NO_SERIAL
@@ -41,61 +58,77 @@ void setup() {
 		delay(2);
 	}
 #endif
-	
+	PRINTFLN("Serial ok");
 	//SoftwareSerial oSer(ARDUINO_RX, ARDUINO_TX);
 #ifndef NO_SERIAL
-	pSim7600 = new SIM7600MQTT::ClMQTTClient(SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, &Serial);
+	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, &Serial);
 #else
-	pSim7600 = new SIM7600MQTT::ClMQTTClient(SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
+	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
-	pBME680 = new ClBME680Wrapper();
-	if(!pBME680->init()){
-		 PRINTLN("Could not find a valid BME680 sensor, check wiring!")
-		 pBME680->deinit();
+	const String cpFeeds[3] = { MQTT_PUB_TEMPERATURE_FEED, 
+								MQTT_PUB_PRESSURE_FEED, 
+								MQTT_PUB_HUMIDITY_FEED};
+	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
+	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, &Serial)){
+		 PRINTFLN("Could not init MsgQueue");		
 	}
+	PRINTFLN("g_pMsgQueue ok");
+	g_pBME680 = new ClBME680Wrapper();
+	if(!g_pBME680->init()){
+		 PRINTFLN("Could not find a valid BME680 sensor, check wiring!")
+		 g_pBME680->deinit();
+	}
+	PRINTFLN("g_pBME680 ok");
 }
 
-int gnLoopDelay{5000};
+unsigned long gnLoopDelay{5000};
+
+unsigned long nLoopCount{0};
 
 void loop() 
 {
-	if(!pBME680->performReading()){
-		PRINTLN("Failed reading BME680 sensor");
-	}	
-
-	if(!pSim7600->isConnected())
-	{
-		PRINT("connect ... ")
-		if(pSim7600->connect(SIM7600_MQTT_HOST, SIM7600_MQTT_PORT, SIM7600_MQTT_HOST_USERNAME,
-		 SIM7600_MQTT_HOST_KEY) != 0)
-		{
-			PRINTLN("failed")
-			pSim7600->disconnect();
-			delay(10000);
-			return;
+	PRINTLN(String("measure(") + String(nLoopCount) + String(")..."));
+	if(!g_pBME680->performReading()){
+		PRINTFLN("Failed reading BME680 sensor");
+		if(!g_pBME680->init()){
+		 	PRINTFLN("Could not find a valid BME680 sensor, check wiring!")
+		 	g_pBME680->deinit();
 		}
-		PRINTLN("ok")
 	}
 
-	publish_measurement(MQTT_PUB_TEMPERATURE_FEED, pBME680->temperature() + CALIB_TEMP);
-	publish_measurement(MQTT_PUB_PRESSURE_FEED, pBME680->pressure());
-	publish_measurement(MQTT_PUB_HUMIDITY_FEED, pBME680->humidity());
+	PRINTFLN("add messages...");
+	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature() + CALIB_TEMP)));
+	//Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->pressure())));
+	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity())));
+
+	// Check_Queue(g_pMsgQueue->AddMessage(0, String(22.0)));
+	// Check_Queue(g_pMsgQueue->AddMessage(1, String(1001.1)));
+	// Check_Queue(g_pMsgQueue->AddMessage(2, String(57.5)));
 	// publish_measurement(MQTT_PUB_GASRESISTANCE_FEED, pBME680->gas_resistance());
 	//publish_measurement(MQTT_PUB_VOLTAGE_FEED, 10.0);
-	PRINT("subscribe (retained)...");
-	String sSubMsg;
-	if(pSim7600->get_subscribe(MQTT_SUB_FEED, sSubMsg) != 0)
+	if(nLoopCount % MESSAGE_QUEUE_SIZE == 0 && nLoopCount != 0)
 	{
-			PRINTLN("failed")
-			delay(10000);
-			return;
+		PRINTF("subscribe (retained)...");
+		if(!g_pSim7600->isConnected()){
+			g_pSim7600->connect();
+		}
+		String sSubMsg;
+		if(g_pSim7600->get_subscribe(MQTT_SUB_FEED, sSubMsg) != 0)
+		{
+				PRINTFLN("failed")
+				delay(10000);
+				return;
+		}
+		else{
+			PRINTLN(String(F("Message: ")) + sSubMsg)
+			gnLoopDelay = atoi(sSubMsg.c_str());
+		}
+		delay(250);
+		g_pSim7600->disconnect();
+		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
 	}
-	else{
-		PRINTLN(String("Message: ") + sSubMsg)
-		gnLoopDelay = atoi(sSubMsg.c_str());
-	}
-	gnLoopDelay = max(3000, min(120000, gnLoopDelay));
+	PRINTLN(String(F("Wait for ")) + String(gnLoopDelay) + F("ms"))
 
-	PRINTLN(String("Wait for ") + String(gnLoopDelay) + "ms")
+	nLoopCount++;
 	delay(gnLoopDelay);
 }

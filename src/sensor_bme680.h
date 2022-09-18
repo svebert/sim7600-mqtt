@@ -61,4 +61,4 @@ class ClBME680Wrapper
         Adafruit_BME680 * m_pBME680 = nullptr;
 };
 
-ClBME680Wrapper * pBME680{nullptr}; 
+ClBME680Wrapper * g_pBME680{nullptr}; 

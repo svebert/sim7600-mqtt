@@ -1,9 +1,11 @@
 #include "mqtt.h"
+#include <Arduino.h>
 
 namespace SIM7600MQTT
 {
-    ClMQTTClient::ClMQTTClient(int nTX, int nRX, int nBaudRate, Stream *pLog) :
-    m_oSerial(nTX, nRX, nBaudRate, 115200, pLog),
+    ClMQTTClient::ClMQTTClient(String sConnection, int nTX, int nRX, unsigned int nBaudRate, Stream *pLog) :
+    m_sConnection(sConnection),
+    m_oSerial(nTX, nRX, nBaudRate, 115200U, pLog),
     m_pDbgLog(pLog)
     { 
 
@@ -27,12 +29,12 @@ namespace SIM7600MQTT
             if(m_pDbgLog){m_pDbgLog->println("Failed to receive reply from AT+CMQTTDSIC?");}
             return -2;
         }   
-        if(sReply == "+CMQTTDISC: 0,0")
+        if(sReply == F("+CMQTTDISC: 0,0"))
         {
             if(m_pDbgLog){m_pDbgLog->println("!connected!");}      
             return true;
         }
-        else if(sReply == "+CMQTTDISC: 0,1")
+        else if(sReply == F("+CMQTTDISC: 0,1"))
         {
             if(m_pDbgLog){m_pDbgLog->println("!not connected!");}      
         }
@@ -43,7 +45,7 @@ namespace SIM7600MQTT
         return false;
     }
 
-    int ClMQTTClient::connect(String sHost, int nPort, String sUsername, String sPassword)
+    int ClMQTTClient::connect()
     {
         if(m_oSerial.init() != 0)
         {
@@ -52,13 +54,11 @@ namespace SIM7600MQTT
         delay(200);
         m_oSerial.sendCheckReply("AT+CMQTTSTART");
         delay(200);
-        m_oSerial.sendCheckReply("AT+CMQTTACCQ=0,\"sven-860524\",0");
-        String sMsg("AT+CMQTTCONNECT=0,\"tcp://" + String(sHost) + ":" + String(nPort) + "\",90,1,\"" + String(sUsername) +"\",\"" + String(sPassword) +"\"");
+        m_oSerial.sendCheckReply("AT+CMQTTACCQ=0,\"sven-860524\",0"); 
         //if(m_pDbgLog){m_pDbgLog->println(sMsg);}
-        m_oSerial.sendCheckReply(sMsg.c_str());
+        m_oSerial.sendCheckReply(m_sConnection.c_str());
         delay(200);
         return 0;
-        //return ConnectionStatus() ? 0 : -2;
     }
 
     int ClMQTTClient::disconnect()
@@ -74,24 +74,24 @@ namespace SIM7600MQTT
         return ConnectionStatus() ? -1 : 0;
     }
 
-    int ClMQTTClient::publish(String sFeed, String sMessage)
+    int ClMQTTClient::publish(const char* szFeed, const char* szMessage)
     {
-
-        String sMsg("AT+CMQTTTOPIC=0,");
-        sMsg += String(sFeed.length());
+        if(m_pDbgLog){m_pDbgLog->println("--publish");}
+        String sMsg(F("AT+CMQTTTOPIC=0,"));
+        sMsg += String(strlen(szFeed));
+        if(m_pDbgLog){m_pDbgLog->println(szFeed);}
         m_oSerial.sendCheckReply(sMsg.c_str(), ">");
-        m_oSerial.sendCheckReply(sFeed.c_str());
-        sMsg = "AT+CMQTTPAYLOAD=0,";
-        sMsg += String(sMessage.length());
+        m_oSerial.sendCheckReply(szFeed);
+        sMsg = F("AT+CMQTTPAYLOAD=0,");
+        sMsg += String(strlen(szMessage));
         m_oSerial.sendCheckReply(sMsg.c_str(), ">");
-        m_oSerial.sendCheckReply(sMessage.c_str());
+        m_oSerial.sendCheckReply(szMessage);
 
         return m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,100") ? 0 : -1;
-
     }
 
     bool ClMQTTClient::Parse(const String& sIn, String& sOutMsg){
-        const String sSearchString("+CMQTTRXPAYLOAD: 0,");
+        const String sSearchString(F("+CMQTTRXPAYLOAD: 0,"));
         int nPos = sIn.indexOf(sSearchString);
         if(nPos < 0){
             return false;
@@ -112,15 +112,15 @@ namespace SIM7600MQTT
         return true;
     }
 
-    int ClMQTTClient::get_subscribe(String sFeed, String& rsMsg){
+    int ClMQTTClient::get_subscribe(const String& sFeed, String& rsMsg){
 
         delay(250);
-        String sATMsg("AT+CMQTTSUBTOPIC=0,");
-        sATMsg += String(sFeed.length()) + ",1";
+        String sATMsg(F("AT+CMQTTSUBTOPIC=0,"));
+        sATMsg += String(sFeed.length()) + F(",1");
         //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
         String sATReply;
         m_oSerial.getReply(sATMsg.c_str(), sATReply);
-        if(sATReply == "+CMQTTSUBTOPIC: 0,14")
+        if(sATReply == F("+CMQTTSUBTOPIC: 0,14"))
         {
             return 0;
         }
@@ -129,12 +129,12 @@ namespace SIM7600MQTT
         delay(250);
         m_oSerial.sendCheckReply("AT+CMQTTSUB=0");
         delay(250);
-        String sFeedGet = sFeed + "/get";
-        sATMsg = "AT+CMQTTTOPIC=0,";
+        String sFeedGet = sFeed + F("/get");
+        sATMsg = F("AT+CMQTTTOPIC=0,");
         sATMsg += String(sFeedGet.length());
         //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
         m_oSerial.getReply(sATMsg.c_str(), sATReply);
-        if(sATReply == "+CMQTTTOPIC: 0,14")
+        if(sATReply == F("+CMQTTTOPIC: 0,14"))
         {
             return 0;
         }
@@ -150,8 +150,8 @@ namespace SIM7600MQTT
         if(m_oSerial.readlines(sMsgBack, 2000)){
             bHaveMsg = Parse(sMsgBack, rsMsg);
         }
-        sATMsg = "AT+CMQTTUNSUB=0,";
-        sATMsg += String(sFeed.length()) + ",0";
+        sATMsg = F("AT+CMQTTUNSUB=0,");
+        sATMsg += String(sFeed.length()) + F(",0");
         //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
         m_oSerial.sendCheckReply(sATMsg.c_str(), ">");
         m_oSerial.sendCheckReply(sFeed.c_str());

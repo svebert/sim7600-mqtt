@@ -4,7 +4,7 @@
 namespace SIM7600MQTT
 {
 
-    ClATCommandSerial::ClATCommandSerial(int nTX, int nRX, unsigned long nBaudRate, unsigned long nBaudRateInit=115200U, Stream *pLog) :
+    ClATCommandSerial::ClATCommandSerial(int nTX, int nRX, unsigned long nBaudRate, unsigned long nBaudRateInit, Stream *pLog) :
         m_oSerial(nRX, nTX),
         m_nBaudRate(nBaudRate),
         m_nBaudRateInit(nBaudRateInit),
@@ -19,18 +19,15 @@ namespace SIM7600MQTT
                 return 0;
             }
 
-            delay(2000);
             m_oSerial.begin(m_nBaudRateInit);
-            delay(500);
+            delay(250);
             sendCheckReply("ATE0"); //disable echo
-            delay(100);
             if(!sendCheckReply("AT")){
                 m_oSerial.begin(m_nBaudRate);
-                delay(500);
+                delay(250);
                 sendCheckReply("ATE0"); //disable echo
-                delay(100);
                 if(!sendCheckReply("AT")){
-                    if(m_pDbgLog){ m_pDbgLog->println("Failed Set BaudRate 1");}
+                    if(m_pDbgLog){ m_pDbgLog->println(F("Failed Set BaudRate 1"));}
                     return -1;
                 }
                 else
@@ -40,14 +37,14 @@ namespace SIM7600MQTT
                 }
             }
 
-            String sMsg("AT+IPR=");
+            String sMsg(F("AT+IPR="));
             sMsg += String(m_nBaudRate);
             sendCheckReply(sMsg.c_str());
-            delay(100);
             m_oSerial.begin(m_nBaudRate);
-            delay(500);
+            delay(250);
+            sendCheckReply("ATE0");
             if(!sendCheckReply("AT")){
-                if(m_pDbgLog){ m_pDbgLog->println("Failed Set BaudRate 2");}
+                if(m_pDbgLog){ m_pDbgLog->println(F("Failed Set BaudRate 2"));}
                 return -3;
             }
 
