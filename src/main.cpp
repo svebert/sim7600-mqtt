@@ -4,11 +4,11 @@
 
 //#define MQTT_PUB_VOLTAGE_FEED "svebert/f/voltage"
 #define CALIB_TEMP -1.5
-#define MQTT_PUB_TEMPERATURE_FEED "svebert/f/temperature"
-#define MQTT_PUB_PRESSURE_FEED "svebert/f/pressure"
-#define MQTT_PUB_HUMIDITY_FEED "svebert/f/humidity"
+#define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
+// #define MQTT_PUB_PRESSURE_FEED "traeholm/pressure"
+#define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
 // #define MQTT_PUB_GASRESISTANCE_FEED "svebert/f/gas-resistance"
-#define MQTT_SUB_FEED "svebert/f/welcome-feed"
+#define MQTT_SUB_FEED "traeholm/timing"
 
 //#define NO_SERIAL //comment for debugging
 
@@ -112,7 +112,7 @@ void loop()
 			g_pSim7600->connect();
 		}
 		String sSubMsg;
-		if(g_pSim7600->get_subscribe(MQTT_SUB_FEED, sSubMsg) != 0)
+		if(g_pSim7600->subscribe_retained(MQTT_SUB_FEED, sSubMsg) != 0)
 		{
 				PRINTFLN("failed")
 				delay(10000);

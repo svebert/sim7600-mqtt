@@ -14,7 +14,8 @@ class ClMQTTClient
         int connect();
         int disconnect();
         int publish(const char* szFeed, const char* szMessage);
-        int get_subscribe(const String& sFeed, String& sMsg); //get retained message
+        // int get_subscribe(const String& sFeed, String& sMsg); //get retained message
+        int subscribe_retained(const String& sFeed, String& rsMsg); //get retained message
         bool isConnected();
     private:
         bool ConnectionStatus();
