@@ -1,10 +1,10 @@
 #pragma once
 
 #include "mqtt.h"
-#include <SoftwareSerial.h>
+#include <Stream.h>
 
-#define MESSAGE_QUEUE_SIZE 5
-#define MESSAGE_QUEUE_FEED_COUNT 2
+#define MESSAGE_QUEUE_SIZE 10
+#define MESSAGE_QUEUE_FEED_COUNT 3
 #define MESSAGE_QUEUE_MSG_LEN 8
 #define MESSAGE_QUEUE_FEED_LEN 25
 namespace SIM7600MQTT
@@ -37,8 +37,11 @@ namespace SIM7600MQTT
             unsigned long m_nNow{0};
             ClMQTTClient * m_pMQTTClient{nullptr};
             const int m_nMaxReconnections{5};
+            bool m_bSendJson{true};
 
             bool AddMessageToBuffer(int nFeedIdx, int nFreeBufferIdx, const String& sMsg);
             bool Send();
+            bool SendIterative();
+            bool SendJson();
     };
 }

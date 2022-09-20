@@ -5,7 +5,9 @@ namespace SIM7600MQTT
 {
 
     ClATCommandSerial::ClATCommandSerial(int nTX, int nRX, unsigned long nBaudRate, unsigned long nBaudRateInit, Stream *pLog) :
-        m_oSerial(nRX, nTX),
+#ifdef MICRO
+        SERIAL(nRX, nTX),
+#endif
         m_nBaudRate(nBaudRate),
         m_nBaudRateInit(nBaudRateInit),
         m_pDbgLog(pLog),
@@ -19,11 +21,11 @@ namespace SIM7600MQTT
                 return 0;
             }
 
-            m_oSerial.begin(m_nBaudRateInit);
+            SERIAL.begin(m_nBaudRateInit);
             delay(250);
             sendCheckReply("ATE0"); //disable echo
             if(!sendCheckReply("AT")){
-                m_oSerial.begin(m_nBaudRate);
+                SERIAL.begin(m_nBaudRate);
                 delay(250);
                 sendCheckReply("ATE0"); //disable echo
                 if(!sendCheckReply("AT")){
@@ -40,7 +42,7 @@ namespace SIM7600MQTT
             String sMsg(F("AT+IPR="));
             sMsg += String(m_nBaudRate);
             sendCheckReply(sMsg.c_str());
-            m_oSerial.begin(m_nBaudRate);
+            SERIAL.begin(m_nBaudRate);
             delay(250);
             sendCheckReply("ATE0");
             if(!sendCheckReply("AT")){
@@ -75,8 +77,8 @@ namespace SIM7600MQTT
             break;
             }
 
-            while(m_oSerial.available()) {
-            char c = m_oSerial.read();
+            while(SERIAL.available()) {
+            char c = SERIAL.read();
             if (c == '\r') continue;
             if (c == 0xA) {
                 if (replyidx == 0)   // the first 0x0A is ignored
@@ -109,7 +111,7 @@ namespace SIM7600MQTT
         flushInput();
         if(m_pDbgLog){m_pDbgLog->print(F("\t---> "));m_pDbgLog->println(send);}
 
-        m_oSerial.println(send);
+        SERIAL.println(send);
         uint8_t l = readline(timeout);
         if(m_pDbgLog){m_pDbgLog->print(F("\t<--- "));m_pDbgLog->println(m_aReplybuffer);}
 
@@ -148,13 +150,13 @@ namespace SIM7600MQTT
 
     void ClATCommandSerial::println(const char* szMsg, int nDelay)
     {
-        m_oSerial.println(szMsg);
+        SERIAL.println(szMsg);
         delay(nDelay);
     }
 
     void ClATCommandSerial::println(String sMsg, int nDelay)
     {
-        m_oSerial.println(sMsg);
+        SERIAL.println(sMsg);
         delay(nDelay);
     }
 }

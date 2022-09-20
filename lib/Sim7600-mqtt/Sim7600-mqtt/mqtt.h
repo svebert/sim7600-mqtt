@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SoftwareSerial.h>
+#include <Stream.h>
 #include "serial.h"
 
 namespace SIM7600MQTT

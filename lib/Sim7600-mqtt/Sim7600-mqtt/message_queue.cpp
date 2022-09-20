@@ -64,22 +64,11 @@ namespace SIM7600MQTT
             }
             delay(500);
             //if(m_pDbgLog){m_pDbgLog->println("send stuff");}
-            for(size_t nFeed = 0; nFeed < MESSAGE_QUEUE_FEED_COUNT; ++nFeed)
-            {
-                size_t nFreeBufferIdx = GetFreeBuffer(nFeed);
-                //if(m_pDbgLog){m_pDbgLog->println(String(nFeed));}
-                for(size_t nBuffer = 0; nBuffer < nFreeBufferIdx; ++nBuffer)
-                {
-                    m_nPublishCount++;
-                    // if(m_pDbgLog){m_pDbgLog->println(String(nBuffer));}
-                    // if(m_pDbgLog){m_pDbgLog->println(&m_aBuffers[nFeed].m_sFeed[0]);}
-                    // if(m_pDbgLog){m_pDbgLog->println(&m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]);}
-                    if(m_pMQTTClient->publish(&m_aBuffers[nFeed].m_sFeed[0], &m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]) !=0)
-                    {
-                        m_nErrorCount++;
-                    }
-                    delay(250);
-                }
+            if(!m_bSendJson){
+                SendIterative();
+            }
+            else{
+                SendJson();
             }
 
             if(m_nErrorCount == 0)
@@ -98,6 +87,60 @@ namespace SIM7600MQTT
             
         }
 
+        bool ClMessageQueue::SendIterative(){
+            for(size_t nFeed = 0; nFeed < MESSAGE_QUEUE_FEED_COUNT; ++nFeed)
+            {
+                size_t nFreeBufferIdx = GetFreeBuffer(nFeed);
+                //if(m_pDbgLog){m_pDbgLog->println(String(nFeed));}
+                for(size_t nBuffer = 0; nBuffer < nFreeBufferIdx; ++nBuffer)
+                {
+                    m_nPublishCount++;
+                    // if(m_pDbgLog){m_pDbgLog->println(String(nBuffer));}
+                    // if(m_pDbgLog){m_pDbgLog->println(&m_aBuffers[nFeed].m_sFeed[0]);}
+                    // if(m_pDbgLog){m_pDbgLog->println(&m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]);}
+                    if(m_pMQTTClient->publish(&m_aBuffers[nFeed].m_sFeed[0], &m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]) !=0)
+                    {
+                        m_nErrorCount++;
+                    }
+                    delay(250);
+                }
+            }
+            return true;
+        }
+
+        bool ClMessageQueue::SendJson(){
+            for(size_t nFeed = 0; nFeed < MESSAGE_QUEUE_FEED_COUNT; ++nFeed)
+            {
+                size_t nFreeBufferIdx = GetFreeBuffer(nFeed);
+                String sJsonMsg("[");
+                for(size_t nBuffer = 0; nBuffer < nFreeBufferIdx; ++nBuffer)
+                {
+                    String sElement("{\"value\": ");
+                    sElement += String(&m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]);
+                    sElement += String(", \"offset\": ");
+                    sElement += String(m_aBuffers[nFeed].m_aTimestamps[nBuffer]);
+                    if(nBuffer < nFreeBufferIdx -1){
+                        sElement += "},";
+                    }
+                    else{
+                        sElement += "}";
+                    }
+                    sJsonMsg += sElement;
+                }          
+                sJsonMsg += "]";      
+                m_nPublishCount++;
+                if(m_pMQTTClient->publish(&m_aBuffers[nFeed].m_sFeed[0], sJsonMsg.c_str()) !=0)
+                {
+                    m_nErrorCount++;
+                }
+                delay(250);
+            }
+
+
+
+            return true;
+        }
+
         bool ClMessageQueue::AddMessage(int nFeedIdx, const String& sMsg)
         {
 
@@ -113,6 +156,9 @@ namespace SIM7600MQTT
             {
                 // if(m_pDbgLog){m_pDbgLog->println(String(F("Add to buffer:")) + String(nFreeBufferIdx) +String("/") + String(nFeedIdx));}
                 return AddMessageToBuffer(nFeedIdx, nFreeBufferIdx, sMsg);
+                if(nFreeBufferIdx == 0){
+                    m_nNow = millis();
+                }
             }
             else
             {
@@ -131,6 +177,7 @@ namespace SIM7600MQTT
                 else
                 {
                     return AddMessageToBuffer(nFeedIdx, 0, sMsg);
+                    m_nNow = millis();
                 }
             }           
         }
