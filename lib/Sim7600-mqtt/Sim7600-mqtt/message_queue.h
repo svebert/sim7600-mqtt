@@ -3,10 +3,18 @@
 #include "mqtt.h"
 #include <Stream.h>
 
-#define MESSAGE_QUEUE_SIZE 10
-#define MESSAGE_QUEUE_FEED_COUNT 3
+#ifndef MESSAGE_QUEUE_MSG_LEN
 #define MESSAGE_QUEUE_MSG_LEN 8
+#endif
+#ifndef MESSAGE_QUEUE_SIZE
+#define MESSAGE_QUEUE_SIZE 10
+#endif
+#ifndef MESSAGE_QUEUE_FEED_COUNT
+#define MESSAGE_QUEUE_FEED_COUNT 3
+#endif
+#ifndef MESSAGE_QUEUE_FEED_LEN
 #define MESSAGE_QUEUE_FEED_LEN 25
+#endif
 namespace SIM7600MQTT
 {
     struct StMsgBuffer

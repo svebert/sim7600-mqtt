@@ -20,7 +20,6 @@ namespace SIM7600MQTT
                 }           
                 strlcpy(m_aBuffers[nI].m_sFeed, pFeeds[nI].c_str(), MESSAGE_QUEUE_FEED_LEN);
             }
-            m_nNow = millis();
             
             if(!pMQTTClient)
             {
@@ -38,7 +37,7 @@ namespace SIM7600MQTT
         {
                 strlcpy(m_aBuffers[nFeedIdx].m_stElement[nFreeBufferIdx].m_szMsg, sMsg.c_str(), MESSAGE_QUEUE_MSG_LEN);
                 m_aBuffers[nFeedIdx].m_stElement[nFreeBufferIdx].m_szMsg[min(sMsg.length(), MESSAGE_QUEUE_MSG_LEN -1)] = 0;
-                m_aBuffers[nFeedIdx].m_aTimestamps[nFreeBufferIdx] = millis() - m_nNow;
+                m_aBuffers[nFeedIdx].m_aTimestamps[nFreeBufferIdx] = millis();
                 return true;
         }
 
@@ -118,7 +117,7 @@ namespace SIM7600MQTT
                     String sElement("{\"value\": ");
                     sElement += String(&m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]);
                     sElement += String(", \"offset\": ");
-                    sElement += String(m_aBuffers[nFeed].m_aTimestamps[nBuffer]);
+                    sElement += String(m_aBuffers[nFeed].m_aTimestamps[nBuffer] - m_aBuffers[nFeed].m_aTimestamps[0]);
                     if(nBuffer < nFreeBufferIdx -1){
                         sElement += "},";
                     }
@@ -156,9 +155,6 @@ namespace SIM7600MQTT
             {
                 // if(m_pDbgLog){m_pDbgLog->println(String(F("Add to buffer:")) + String(nFreeBufferIdx) +String("/") + String(nFeedIdx));}
                 return AddMessageToBuffer(nFeedIdx, nFreeBufferIdx, sMsg);
-                if(nFreeBufferIdx == 0){
-                    m_nNow = millis();
-                }
             }
             else
             {
@@ -177,7 +173,6 @@ namespace SIM7600MQTT
                 else
                 {
                     return AddMessageToBuffer(nFeedIdx, 0, sMsg);
-                    m_nNow = millis();
                 }
             }           
         }

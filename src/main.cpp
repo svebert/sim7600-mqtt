@@ -3,20 +3,26 @@
 #else
 #define MKRZERO
 #endif
+
 #include <Arduino.h>
 #include "sim7600.h"
 #include "sensor_bme680.h"
 
-//#define MQTT_PUB_VOLTAGE_FEED "svebert/f/voltage"
+//condig start
+#define MESSAGE_QUEUE_SIZE 10
+#define MESSAGE_QUEUE_FEED_COUNT 3
+#define MESSAGE_QUEUE_FEED_LEN 25
+
 #define CALIB_TEMP -1.5
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
 #define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
 #define MQTT_PUB_PRESSURE_FEED "traeholm/pressure"
-// #define MQTT_PUB_GASRESISTANCE_FEED "svebert/f/gas-resistance"
 #define MQTT_SUB_FEED "traeholm/timing"
 
 #define DEBUG //uncomment for debugging
 
+
+//config end
 #ifdef DEBUG
 #ifdef MICRO
 #include <SoftwareSerial.h>
@@ -71,12 +77,13 @@ void setup() {
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
-	const String cpFeeds[3] = { MQTT_PUB_TEMPERATURE_FEED, 
+	const String cpFeeds[MESSAGE_QUEUE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
 								MQTT_PUB_PRESSURE_FEED};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, &Serial)){
+		 PRINTFLN("Could not init MsgQueue");		
 		 PRINTFLN("Could not init MsgQueue");		
 	}
 	PRINTFLN("g_pMsgQueue ok");

@@ -44,7 +44,7 @@ class ClBME680Wrapper
         }
         float pressure(){
             if(m_pBME680)
-                return static_cast<float>(m_pBME680->pressure/100);
+                return static_cast<float>(m_pBME680->pressure)/100.0f;
             return -1.0f;
         }
         float humidity(){
