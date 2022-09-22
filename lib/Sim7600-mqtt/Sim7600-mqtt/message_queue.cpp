@@ -14,6 +14,7 @@ namespace SIM7600MQTT
                 memset(&(m_aBuffers[nI].m_sFeed[0]), 0, MESSAGE_QUEUE_FEED_LEN);
                 memset(&(m_aBuffers[nI].m_stElement[0].m_szMsg[0]), 0, MESSAGE_QUEUE_MSG_LEN*MESSAGE_QUEUE_SIZE);
                 memset(&(m_aBuffers[nI].m_aTimestamps[0]), 0, sizeof(unsigned long)*MESSAGE_QUEUE_SIZE);    
+                m_anBufferIdx[nI]=0;
                 if(pFeeds[nI].length() > MESSAGE_QUEUE_FEED_LEN -1){
                     if(m_pDbgLog){m_pDbgLog->println("Error: feed name is too long");}
                     return false;
@@ -33,11 +34,12 @@ namespace SIM7600MQTT
             return true;
         }
 
-        bool ClMessageQueue::AddMessageToBuffer(int nFeedIdx, int nFreeBufferIdx, const String& sMsg)
+        bool ClMessageQueue::AddMessageToBuffer(int nFeedIdx, const String& sMsg)
         {
-                strlcpy(m_aBuffers[nFeedIdx].m_stElement[nFreeBufferIdx].m_szMsg, sMsg.c_str(), MESSAGE_QUEUE_MSG_LEN);
-                m_aBuffers[nFeedIdx].m_stElement[nFreeBufferIdx].m_szMsg[min(sMsg.length(), MESSAGE_QUEUE_MSG_LEN -1)] = 0;
-                m_aBuffers[nFeedIdx].m_aTimestamps[nFreeBufferIdx] = millis();
+                strlcpy(m_aBuffers[nFeedIdx].m_stElement[m_anBufferIdx[nFeedIdx]].m_szMsg, sMsg.c_str(), MESSAGE_QUEUE_MSG_LEN);
+                m_aBuffers[nFeedIdx].m_stElement[m_anBufferIdx[nFeedIdx]].m_szMsg[min(sMsg.length(), MESSAGE_QUEUE_MSG_LEN -1)] = 0;
+                m_aBuffers[nFeedIdx].m_aTimestamps[m_anBufferIdx[nFeedIdx]] = millis();
+                m_anBufferIdx[nFeedIdx]++;
                 return true;
         }
 
@@ -55,13 +57,7 @@ namespace SIM7600MQTT
                 delay(3000);
                 ++nConnection;
             }
-            // if(m_pDbgLog){m_pDbgLog->println("is connected?");}
-            if(!m_pMQTTClient->isConnected())
-            {
-                m_nConnectionError = 1;
-                return false;
-            }
-            delay(500);
+
             //if(m_pDbgLog){m_pDbgLog->println("send stuff");}
             if(!m_bSendJson){
                 SendIterative();
@@ -89,9 +85,8 @@ namespace SIM7600MQTT
         bool ClMessageQueue::SendIterative(){
             for(size_t nFeed = 0; nFeed < MESSAGE_QUEUE_FEED_COUNT; ++nFeed)
             {
-                size_t nFreeBufferIdx = GetFreeBuffer(nFeed);
                 //if(m_pDbgLog){m_pDbgLog->println(String(nFeed));}
-                for(size_t nBuffer = 0; nBuffer < nFreeBufferIdx; ++nBuffer)
+                for(size_t nBuffer = 0; nBuffer < m_anBufferIdx[nFeed]; ++nBuffer)
                 {
                     m_nPublishCount++;
                     // if(m_pDbgLog){m_pDbgLog->println(String(nBuffer));}
@@ -110,15 +105,14 @@ namespace SIM7600MQTT
         bool ClMessageQueue::SendJson(){
             for(size_t nFeed = 0; nFeed < MESSAGE_QUEUE_FEED_COUNT; ++nFeed)
             {
-                size_t nFreeBufferIdx = GetFreeBuffer(nFeed);
                 String sJsonMsg("[");
-                for(size_t nBuffer = 0; nBuffer < nFreeBufferIdx; ++nBuffer)
+                for(size_t nBuffer = 0; nBuffer < m_anBufferIdx[nFeed]; ++nBuffer)
                 {
                     String sElement("{\"value\": ");
                     sElement += String(&m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]);
                     sElement += String(", \"offset\": ");
                     sElement += String(m_aBuffers[nFeed].m_aTimestamps[nBuffer] - m_aBuffers[nFeed].m_aTimestamps[0]);
-                    if(nBuffer < nFreeBufferIdx -1){
+                    if(nBuffer < m_anBufferIdx[nFeed] -1){
                         sElement += "},";
                     }
                     else{
@@ -150,21 +144,19 @@ namespace SIM7600MQTT
             m_nErrorCount = 0;
             m_nPublishCount = 0;
             m_nConnectionError = 0;
-            size_t nFreeBufferIdx = GetFreeBuffer(nFeedIdx);
-            if(nFreeBufferIdx < MESSAGE_QUEUE_SIZE)
+            if(m_anBufferIdx[nFeedIdx] < MESSAGE_QUEUE_SIZE)
             {
-                // if(m_pDbgLog){m_pDbgLog->println(String(F("Add to buffer:")) + String(nFreeBufferIdx) +String("/") + String(nFeedIdx));}
-                return AddMessageToBuffer(nFeedIdx, nFreeBufferIdx, sMsg);
+                return AddMessageToBuffer(nFeedIdx, sMsg);
             }
             else
             {
-                // if(m_pDbgLog){m_pDbgLog->println(String(F("Send")));}
                 bool bSendSuccess = Send();
 
                 for(int nI = 0; nI< MESSAGE_QUEUE_FEED_COUNT; ++nI)
                 {
                     memset(&(m_aBuffers[nI].m_stElement[0].m_szMsg[0]), 0, MESSAGE_QUEUE_MSG_LEN*MESSAGE_QUEUE_SIZE);
-                    memset(&(m_aBuffers[nI].m_aTimestamps[0]), 0, sizeof(unsigned long)*MESSAGE_QUEUE_SIZE);                     
+                    memset(&(m_aBuffers[nI].m_aTimestamps[0]), 0, sizeof(unsigned long)*MESSAGE_QUEUE_SIZE);       
+                    m_anBufferIdx[nI]=0;              
                 }
 
                 if(!bSendSuccess){
@@ -172,24 +164,9 @@ namespace SIM7600MQTT
                 }
                 else
                 {
-                    return AddMessageToBuffer(nFeedIdx, 0, sMsg);
+                    return AddMessageToBuffer(nFeedIdx, sMsg);
                 }
             }           
-        }
-
-        int ClMessageQueue::GetFreeBuffer(int nFeedIdx)
-        {
-            if(nFeedIdx >= MESSAGE_QUEUE_FEED_COUNT){
-                return MESSAGE_QUEUE_SIZE;
-            }
-            for(size_t nIdx = 0; nIdx < MESSAGE_QUEUE_SIZE; nIdx++)
-            {
-                if(strlen(&m_aBuffers[nFeedIdx].m_stElement[nIdx].m_szMsg[0]) == 0 )
-                {
-                    return nIdx;
-                }
-            }
-            return MESSAGE_QUEUE_SIZE;
         }
 
 } // namespace SIM7600MQTT

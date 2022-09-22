@@ -8,11 +8,6 @@
 #include "sim7600.h"
 #include "sensor_bme680.h"
 
-//condig start
-#define MESSAGE_QUEUE_SIZE 10
-#define MESSAGE_QUEUE_FEED_COUNT 3
-#define MESSAGE_QUEUE_FEED_LEN 25
-
 #define CALIB_TEMP -1.5
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
 #define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
@@ -66,9 +61,9 @@ void Check_Queue(bool bReturnQueue){
 void setup() {
 #ifdef DEBUG
 	Serial.begin(SIM7600_BAUD_RATE);
-	while (!Serial){
-		delay(2);
-	}
+	// while (!Serial){
+	// 	delay(2);
+	// }
 #endif
 	PRINTFLN("Serial ok");
 	//SoftwareSerial oSer(ARDUINO_RX, ARDUINO_TX);
@@ -77,14 +72,14 @@ void setup() {
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
+	g_pSim7600->connect();
 	const String cpFeeds[MESSAGE_QUEUE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
 								MQTT_PUB_PRESSURE_FEED};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, &Serial)){
-		 PRINTFLN("Could not init MsgQueue");		
-		 PRINTFLN("Could not init MsgQueue");		
+		 PRINTFLN("Could not init MsgQueue");			
 	}
 	PRINTFLN("g_pMsgQueue ok");
 	g_pBME680 = new ClBME680Wrapper();
@@ -111,7 +106,7 @@ void loop()
 	}
 
 	PRINTFLN("add messages...");
-	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature() + CALIB_TEMP)));
+	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature())));
 	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity())));
 	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure())));
 
@@ -135,7 +130,6 @@ void loop()
 		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
 	}
 	PRINTLN(String(F("Wait for ")) + String(gnLoopDelay) + F("ms"));
-
 	nLoopCount++;
 	delay(gnLoopDelay);
 }

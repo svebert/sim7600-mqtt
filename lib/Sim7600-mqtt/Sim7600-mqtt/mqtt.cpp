@@ -16,12 +16,19 @@ namespace SIM7600MQTT
         disconnect();
     }
 
+    bool ClMQTTClient::powerOff(){
+        if(!m_bPoweredOff){
+        m_oSerial.sendCheckReplyNoInit("ATE0");
+        bool bOK = m_oSerial.sendCheckReplyNoInit("AT+CPOF");
+        if(bOK){delay(5000);m_bPoweredOff=true;}
+        m_oSerial.DeInit();
+
+        return bOK;}
+        return true;
+    }
+
     bool ClMQTTClient::ConnectionStatus()
     {
-        if(m_oSerial.init() != 0)
-        {
-            return -1;
-        }
         String sReply;
         bool bHaveReply = m_oSerial.getReply("AT+CMQTTDISC?", sReply);
         if(!bHaveReply)
@@ -34,7 +41,7 @@ namespace SIM7600MQTT
             if(m_pDbgLog){m_pDbgLog->println("!connected!");}      
             return true;
         }
-        else if(sReply == F("+CMQTTDISC: 0,1"))
+        else if(sReply == F("+CMQTTDISC: 0,1") || sReply == F("ERROR"))
         {
             if(m_pDbgLog){m_pDbgLog->println("!not connected!");}      
         }
@@ -47,27 +54,28 @@ namespace SIM7600MQTT
 
     int ClMQTTClient::connect()
     {
-        if(m_oSerial.init() != 0)
-        {
-            return -1;
-        }
         delay(200);
         m_oSerial.sendCheckReply("AT+CMQTTSTART");
         delay(200);
-        m_oSerial.sendCheckReply("AT+CMQTTACCQ=0,\"sven-860524\",0"); 
+        String sReply;
+        for(int i=0; i <30; ++i){
+            bool bHaveReply = m_oSerial.getReply("AT+CMQTTACCQ=0,\"sven-860524\",0", sReply); 
+            if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTACCQ: 0,19")){
+                break;
+            }
+            else{
+                delay(2000);
+            }
+        }
         //if(m_pDbgLog){m_pDbgLog->println(sMsg);}
         m_oSerial.sendCheckReply(m_sConnection.c_str());
         delay(200);
+        m_bPoweredOff = false;
         return 0;
     }
 
     int ClMQTTClient::disconnect()
     {
-        if(m_oSerial.init() != 0)
-        {
-            return -1;
-        }
-
         m_oSerial.sendCheckReply("AT+CMQTTDISC=0,60");        
         m_oSerial.sendCheckReply("AT+CMQTTREL=0");
         m_oSerial.sendCheckReply("AT+CMQTTSTOP");

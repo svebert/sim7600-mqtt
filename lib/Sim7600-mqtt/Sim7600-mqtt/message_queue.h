@@ -7,7 +7,7 @@
 #define MESSAGE_QUEUE_MSG_LEN 8
 #endif
 #ifndef MESSAGE_QUEUE_SIZE
-#define MESSAGE_QUEUE_SIZE 10
+#define MESSAGE_QUEUE_SIZE 15
 #endif
 #ifndef MESSAGE_QUEUE_FEED_COUNT
 #define MESSAGE_QUEUE_FEED_COUNT 3
@@ -41,13 +41,13 @@ namespace SIM7600MQTT
         private:
             Stream* m_pDbgLog{nullptr};
             StBuffer m_aBuffers[MESSAGE_QUEUE_FEED_COUNT];
-            int GetFreeBuffer(int nFeedIdx);
+            unsigned int m_anBufferIdx[MESSAGE_QUEUE_FEED_COUNT];
             unsigned long m_nNow{0};
             ClMQTTClient * m_pMQTTClient{nullptr};
             const int m_nMaxReconnections{5};
             bool m_bSendJson{true};
 
-            bool AddMessageToBuffer(int nFeedIdx, int nFreeBufferIdx, const String& sMsg);
+            bool AddMessageToBuffer(int nFeedIdx, const String& sMsg);
             bool Send();
             bool SendIterative();
             bool SendJson();

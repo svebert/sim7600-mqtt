@@ -14,44 +14,99 @@ namespace SIM7600MQTT
         m_bInit(false)
     {  }
 
+
+    bool ClATCommandSerial::HaveBaudRate(unsigned long nBaudRate){
+        SERIAL.begin(nBaudRate);
+        delay(250);
+        sendCheckReply("ATE0");
+        delay(100);
+        bool bOK = sendCheckReply("AT");
+        SERIAL.begin(m_nBaudRate);
+        delay(250);
+        return bOK;
+    }
+
+    bool ClATCommandSerial::SetBaudRate(unsigned long nOldBaudRate, unsigned long nNewBaudRate){
+        SERIAL.begin(nOldBaudRate);
+        delay(250);
+        sendCheckReply("ATE0");
+        delay(100);
+        String sMsg(F("AT+IPR="));
+        sMsg += String(nNewBaudRate);
+        delay(250);
+        SERIAL.begin(nNewBaudRate);
+        delay(250);
+        return sendCheckReply("AT");
+    }
+
     int ClATCommandSerial::init()
     {
-            if(m_bInit)
-            {
-                return 0;
-            }
+        if(m_bInit)
+        {
+            return 0;
+        }
+        m_bInit = true; //to prevent infinit loop
+        if(HaveBaudRate(m_nBaudRateInit))
+        {
+            SetBaudRate(m_nBaudRateInit, m_nBaudRate);
+            if(m_pDbgLog){ m_pDbgLog->println(F("Set Baud -> Ok"));}
+            m_bInit = true;
+            return 0;
+        }
+        else if (HaveBaudRate(m_nBaudRate))
+        {
+            //good
+            if(m_pDbgLog){ m_pDbgLog->println(F("Keep Baud -> Ok"));}
+            m_bInit = true;
+            return 0;
+        }
+        else
+        {
+            if(m_pDbgLog){ m_pDbgLog->println(F("Baud Failed! Power off?"));}
+            // String sMsg;
+            // bool bHaveReply = getReply("AT+CMQTTDISC?", sMsg);
+            // if(bHaveReply && sMsg.startsWith("+CMQTTDISC:")){
+            //     if(m_pDbgLog){m_pDbgLog->println("");}
+            //     m_bInit = true;
+            //     return 0; //already powered on and serial is init
+            // }     
 
-            SERIAL.begin(m_nBaudRateInit);
-            delay(250);
-            sendCheckReply("ATE0"); //disable echo
-            if(!sendCheckReply("AT")){
-                SERIAL.begin(m_nBaudRate);
-                delay(250);
-                sendCheckReply("ATE0"); //disable echo
-                if(!sendCheckReply("AT")){
-                    if(m_pDbgLog){ m_pDbgLog->println(F("Failed Set BaudRate 1"));}
-                    return -1;
-                }
-                else
-                {         
-                    m_bInit = true;       
-                    return 0;
-                }
-            }
-
-            String sMsg(F("AT+IPR="));
-            sMsg += String(m_nBaudRate);
-            sendCheckReply(sMsg.c_str());
             SERIAL.begin(m_nBaudRate);
             delay(250);
-            sendCheckReply("ATE0");
-            if(!sendCheckReply("AT")){
-                if(m_pDbgLog){ m_pDbgLog->println(F("Failed Set BaudRate 2"));}
-                return -3;
+            sendCheckReply("AT+CRESET", "OK", 3000);
+            bool bHaveReboot = false;
+            for(int i = 0; i < 30; ++i){
+                if(sendCheckReply("ATE0", "ATE0")){bHaveReboot=true;break;}
+                delay(2000);
+            }
+            if(!bHaveReboot){
+                if(m_pDbgLog){ m_pDbgLog->println(F("Try 115200"));}
+                SERIAL.begin(m_nBaudRateInit);
+                delay(250);
+                sendCheckReply("AT+CRESET", "OK", 3000);
+                for(int i = 0; i < 30; ++i){
+                    if(sendCheckReply("ATE0", "ATE0")){bHaveReboot=true;break;}
+                    delay(2000);
+                }
+                SetBaudRate(m_nBaudRateInit, m_nBaudRate);
             }
 
-            m_bInit = true;
-            return 0;    
+            for(size_t nCnt = 0; nCnt < 30; ++nCnt){
+                String sMsg;
+                sendCheckReply("ATE0", "ATE0");
+                bool bHaveReply = getReply("AT+CMQTTDISC?", sMsg);
+                if(bHaveReply && sMsg.startsWith("+CMQTTDISC:")){
+                    m_bInit = true;
+                    if(m_pDbgLog){ m_pDbgLog->println(F("power on"));}
+                    return 0; //already powered on
+                }
+                delay(2000);
+            }
+
+            if(m_pDbgLog){ m_pDbgLog->println(F("power off -- Failed!"));}
+            m_bInit = false;
+            return -1; //power off?
+        }
     }
 
     void ClATCommandSerial::flushInput() {
@@ -120,6 +175,7 @@ namespace SIM7600MQTT
 
     bool ClATCommandSerial::readlines(String & rsReply, uint16_t timeout) 
     {
+        if(init() != 0){return false;}
         uint16_t replyidx = readline(timeout, true);
 
         if (replyidx > 0)
@@ -131,6 +187,7 @@ namespace SIM7600MQTT
 
     bool ClATCommandSerial::getReply(const char *send, String & rsReply, uint16_t timeout) 
     {
+        if(init() != 0){return false;}
         uint8_t l = getReply(send, timeout);
         if (l > 0)
         {
@@ -140,8 +197,16 @@ namespace SIM7600MQTT
         return l > 0 ? 1 : 0;
     }
 
+    bool ClATCommandSerial::sendCheckReplyNoInit(const char *send, const char *reply, uint16_t timeout)
+    {
+        if (! getReply(send, timeout) )
+            return false;
+        return (strcmp(m_aReplybuffer, reply) == 0);
+    }
+
     bool ClATCommandSerial::sendCheckReply(const char *send, const char *reply, uint16_t timeout)
     {
+        if(init() != 0){return false;}
         if (! getReply(send, timeout) )
             return false;
         return (strcmp(m_aReplybuffer, reply) == 0);
@@ -150,12 +215,14 @@ namespace SIM7600MQTT
 
     void ClATCommandSerial::println(const char* szMsg, int nDelay)
     {
+        init();
         SERIAL.println(szMsg);
         delay(nDelay);
     }
 
     void ClATCommandSerial::println(String sMsg, int nDelay)
     {
+        init();
         SERIAL.println(sMsg);
         delay(nDelay);
     }
