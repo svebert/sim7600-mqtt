@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include "sim7600.h"
 #include "sensor_bme680.h"
+//#include "sleep_time.h"
 
 #define CALIB_TEMP -1.5
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
@@ -15,7 +16,6 @@
 #define MQTT_SUB_FEED "traeholm/timing"
 
 #define DEBUG //uncomment for debugging
-
 
 //config end
 #ifdef DEBUG
@@ -59,11 +59,9 @@ void Check_Queue(bool bReturnQueue){
 
 
 void setup() {
+delay(5000); //security wait
 #ifdef DEBUG
 	Serial.begin(SIM7600_BAUD_RATE);
-	// while (!Serial){
-	// 	delay(2);
-	// }
 #endif
 	PRINTFLN("Serial ok");
 	//SoftwareSerial oSer(ARDUINO_RX, ARDUINO_TX);
@@ -87,11 +85,18 @@ void setup() {
 		 g_pBME680->deinit();
 	}
 	PRINTFLN("g_pBME680 ok");
+
+	g_rtc.begin();
+	PRINTFLN("g_rtc ok");
 }
 
 unsigned long gnLoopDelay{5000};
 
 unsigned long nLoopCount{0};
+
+void ISR(){
+	digitalWrite(LED_BUILTIN, HIGH);
+}
 
 void loop() 
 {
@@ -129,7 +134,19 @@ void loop()
 		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
 	}
 	g_pSim7600->powerOff();
-	PRINTLN(String(F("Wait for ")) + String(gnLoopDelay) + F("ms"));
 	nLoopCount++;
+
+	// g_rtc.setTime(0,0,0);
+	// g_rtc.setDate(24,05,2022);
+	// uint8_t nSleepSeconds = static_cast<uint8_t>(gnLoopDelay/1000UL);
+	// uint8_t nSleepMinutes = nSleepSeconds/60;
+	// nSleepSeconds = nSleepSeconds%60;
+	// PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds) + F("s"));
+	// g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds);
+	// g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
+	// g_rtc.attachInterrupt(ISR);
+	// digitalWrite(LED_BUILTIN, LOW);
+	// g_rtc.standbyMode();
+
 	delay(gnLoopDelay);
 }

@@ -64,17 +64,9 @@ namespace SIM7600MQTT
         {
             if(m_pDbgLog){ m_pDbgLog->println(F("Baud Failed! Power off?"));}
 
-
             digitalWrite(SIM7600_PIN_ONOFF, LOW);
             delay(1000);
-            // String sMsg;
-            // bool bHaveReply = getReply("AT+CMQTTDISC?", sMsg);
-            // if(bHaveReply && sMsg.startsWith("+CMQTTDISC:")){
-            //     if(m_pDbgLog){m_pDbgLog->println("");}
-            //     m_bInit = true;
-            //     return 0; //already powered on and serial is init
-            // }     
-
+  
             SERIAL.begin(m_nBaudRate);
             delay(250);
             sendCheckReply("AT+CRESET", "OK", 3000);
