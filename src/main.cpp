@@ -86,8 +86,8 @@ delay(5000); //security wait
 	}
 	PRINTFLN("g_pBME680 ok");
 
-	g_rtc.begin();
-	PRINTFLN("g_rtc ok");
+	// g_rtc.begin();
+	// PRINTFLN("g_rtc ok");
 }
 
 unsigned long gnLoopDelay{5000};
