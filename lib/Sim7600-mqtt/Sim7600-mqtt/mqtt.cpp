@@ -82,7 +82,7 @@ namespace SIM7600MQTT
 
         for(int i=0; i <10; ++i){
             bool bHaveReply = m_oSerial.getReply(m_sConnection.c_str(), sReply); 
-            if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTCONNECT: 0,0")){
+            if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTCONNECT: 0,0" || sReply == "+CMQTTCONNECT: 0,13")){
                 break;
             }
             else{
