@@ -12,6 +12,7 @@ class ClMQTTClient
         ClMQTTClient(String sConnection, int nTX, int nRX, unsigned int nBaudRate=19200U, Stream * pDbgLog=nullptr);
         ~ClMQTTClient();
         bool powerOff();
+        bool powerOn();
         int connect();
         int disconnect();
         int publish(const char* szFeed, const char* szMessage);

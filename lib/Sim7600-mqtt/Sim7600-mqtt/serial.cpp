@@ -63,6 +63,10 @@ namespace SIM7600MQTT
         else
         {
             if(m_pDbgLog){ m_pDbgLog->println(F("Baud Failed! Power off?"));}
+
+
+            digitalWrite(SIM7600_PIN_ONOFF, LOW);
+            delay(1000);
             // String sMsg;
             // bool bHaveReply = getReply("AT+CMQTTDISC?", sMsg);
             // if(bHaveReply && sMsg.startsWith("+CMQTTDISC:")){

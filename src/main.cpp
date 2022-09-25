@@ -72,7 +72,6 @@ void setup() {
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
-	g_pSim7600->connect();
 	const String cpFeeds[MESSAGE_QUEUE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
 								MQTT_PUB_PRESSURE_FEED};
@@ -129,6 +128,7 @@ void loop()
 		g_pSim7600->disconnect();
 		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
 	}
+	g_pSim7600->powerOff();
 	PRINTLN(String(F("Wait for ")) + String(gnLoopDelay) + F("ms"));
 	nLoopCount++;
 	delay(gnLoopDelay);

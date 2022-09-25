@@ -8,7 +8,8 @@ namespace SIM7600MQTT
     m_oSerial(nTX, nRX, nBaudRate, 115200U, pLog),
     m_pDbgLog(pLog)
     { 
-
+        pinMode(SIM7600_PIN_ONOFF, OUTPUT);
+        powerOff();
     }
 
     ClMQTTClient::~ClMQTTClient()
@@ -17,13 +18,15 @@ namespace SIM7600MQTT
     }
 
     bool ClMQTTClient::powerOff(){
-        if(!m_bPoweredOff){
-        m_oSerial.sendCheckReplyNoInit("ATE0");
-        bool bOK = m_oSerial.sendCheckReplyNoInit("AT+CPOF");
-        if(bOK){delay(5000);m_bPoweredOff=true;}
-        m_oSerial.DeInit();
-
-        return bOK;}
+        if(!m_bPoweredOff)
+        {
+            m_oSerial.sendCheckReplyNoInit("ATE0");
+            bool bOK = m_oSerial.sendCheckReplyNoInit("AT+CPOF");
+            if(bOK){delay(5000);m_bPoweredOff=true;}
+            m_oSerial.DeInit();
+            digitalWrite(SIM7600_PIN_ONOFF, HIGH);
+            return bOK;
+        }
         return true;
     }
 
@@ -54,11 +57,20 @@ namespace SIM7600MQTT
 
     int ClMQTTClient::connect()
     {
+        String sReply;
+        for(int i=0; i <30; ++i){
+            bool bHaveReply = m_oSerial.getReply("AT+CREG?", sReply); 
+            if(bHaveReply && (sReply == "OK" || sReply == "+CREG: 0,1")){
+                break;
+            }
+            else{
+                delay(2000);
+            }
+        }
         delay(200);
         m_oSerial.sendCheckReply("AT+CMQTTSTART");
         delay(200);
-        String sReply;
-        for(int i=0; i <30; ++i){
+        for(int i=0; i <10; ++i){
             bool bHaveReply = m_oSerial.getReply("AT+CMQTTACCQ=0,\"sven-860524\",0", sReply); 
             if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTACCQ: 0,19")){
                 break;
@@ -67,7 +79,16 @@ namespace SIM7600MQTT
                 delay(2000);
             }
         }
-        //if(m_pDbgLog){m_pDbgLog->println(sMsg);}
+
+        for(int i=0; i <10; ++i){
+            bool bHaveReply = m_oSerial.getReply(m_sConnection.c_str(), sReply); 
+            if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTCONNECT: 0,0")){
+                break;
+            }
+            else{
+                delay(2000);
+            }
+        }
         m_oSerial.sendCheckReply(m_sConnection.c_str());
         delay(200);
         m_bPoweredOff = false;
