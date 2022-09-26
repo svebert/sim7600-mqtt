@@ -13,6 +13,7 @@
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
 #define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
 #define MQTT_PUB_PRESSURE_FEED "traeholm/pressure"
+#define MQTT_PUB_STATUS_FEED "traeholm/status"
 #define MQTT_SUB_FEED "traeholm/timing"
 
 #define DEBUG //uncomment for debugging
@@ -72,7 +73,8 @@ delay(5000); //security wait
 #endif
 	const String cpFeeds[MESSAGE_QUEUE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
-								MQTT_PUB_PRESSURE_FEED};
+								MQTT_PUB_PRESSURE_FEED,
+								MQTT_PUB_STATUS_FEED};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, &Serial)){
@@ -100,11 +102,12 @@ void ISR(){
 
 void loop() 
 {
+	int nErrorCode = 0;
 	PRINTLN(String("measure(") + String(nLoopCount) + String(")..."));
 	if(!g_pBME680->performReading()){
-		PRINTFLN("Failed reading BME680 sensor");
+		PRINTFLN("Failed reading BME680 sensor");nErrorCode=1;
 		if(!g_pBME680->init()){
-		 	PRINTFLN("Could not find a valid BME680 sensor, check wiring!");
+		 	PRINTFLN("Could not find a valid BME680 sensor, check wiring!");nErrorCode=2;
 		 	g_pBME680->deinit();
 		}
 	}
@@ -123,17 +126,17 @@ void loop()
 		String sSubMsg;
 		if(g_pSim7600->subscribe_retained(MQTT_SUB_FEED, sSubMsg) != 0)
 		{
-				PRINTFLN("failed");
+				PRINTFLN("failed");nErrorCode=3;
 		}
 		else{
 			PRINTLN(String(F("Message: ")) + sSubMsg);
 			gnLoopDelay = atoi(sSubMsg.c_str());
 		}
 		delay(250);
-		g_pSim7600->disconnect();
 		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
 	}
-	g_pSim7600->powerOff();
+	Check_Queue(g_pMsgQueue->AddMessage(3, String(nErrorCode) + String("W")+String(gnLoopDelay/1000)));
+	g_pSim7600->disconnect();
 	nLoopCount++;
 
 	// g_rtc.setTime(0,0,0);

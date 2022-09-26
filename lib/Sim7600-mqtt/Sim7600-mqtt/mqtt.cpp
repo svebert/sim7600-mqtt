@@ -8,8 +8,8 @@ namespace SIM7600MQTT
     m_oSerial(nTX, nRX, nBaudRate, 115200U, pLog),
     m_pDbgLog(pLog)
     { 
-        pinMode(SIM7600_PIN_ONOFF, OUTPUT);
-        powerOff();
+        //pinMode(SIM7600_PIN_ONOFF, OUTPUT);
+        disconnect();
     }
 
     ClMQTTClient::~ClMQTTClient()
@@ -17,17 +17,22 @@ namespace SIM7600MQTT
         disconnect();
     }
 
-    bool ClMQTTClient::powerOff(){
-        if(!m_bPoweredOff)
-        {
-            m_oSerial.sendCheckReplyNoInit("ATE0");
-            bool bOK = m_oSerial.sendCheckReplyNoInit("AT+CPOF");
-            if(bOK){delay(5000);m_bPoweredOff=true;}
-            m_oSerial.DeInit();
-            digitalWrite(SIM7600_PIN_ONOFF, HIGH);
-            return bOK;
+    bool ClMQTTClient::flightMode(){
+         m_oSerial.sendCheckReply("ATE0");
+        String sMsg;
+        bool bOK = false;
+        bool bHaveReply = m_oSerial.getReply("AT+CFUN=0", sMsg);            
+        if(bHaveReply && sMsg.startsWith("+SIMCARD: NOT AVAILABLE")){
+            delay(1000);
+            bHaveReply = m_oSerial.getReply("AT+CFUN=0", sMsg);
         }
-        return true;
+        if(bHaveReply && sMsg=="OK"){
+            bOK=true;
+        }
+        //if(bOK){delay(5000);m_bPoweredOff=true;}
+        //m_oSerial.DeInit();
+        //digitalWrite(SIM7600_PIN_ONOFF, HIGH);
+        return bOK;
     }
 
     bool ClMQTTClient::ConnectionStatus()
@@ -58,12 +63,17 @@ namespace SIM7600MQTT
     int ClMQTTClient::connect()
     {
         String sReply;
+        bool bInitCFUN1=false;
         for(int i=0; i <30; ++i){
             bool bHaveReply = m_oSerial.getReply("AT+CREG?", sReply); 
             if(bHaveReply && (sReply == "OK" || sReply == "+CREG: 0,1")){
                 break;
             }
             else{
+                if(!bInitCFUN1){
+                    m_oSerial.sendCheckReply("AT+CFUN=1");
+                    bInitCFUN1=true;
+                }
                 delay(2000);
             }
         }
@@ -91,16 +101,24 @@ namespace SIM7600MQTT
         }
         m_oSerial.sendCheckReply(m_sConnection.c_str());
         delay(200);
-        m_bPoweredOff = false;
+        m_bConnected = true;
         return 0;
     }
 
     int ClMQTTClient::disconnect()
     {
-        m_oSerial.sendCheckReply("AT+CMQTTDISC=0,60");        
-        m_oSerial.sendCheckReply("AT+CMQTTREL=0");
-        m_oSerial.sendCheckReply("AT+CMQTTSTOP");
-        return ConnectionStatus() ? -1 : 0;
+        if(m_bConnected)
+        {
+            m_oSerial.sendCheckReply("AT+CMQTTDISC=0,60");        
+            m_oSerial.sendCheckReply("AT+CMQTTREL=0");
+            m_oSerial.sendCheckReply("AT+CMQTTSTOP");
+            flightMode();
+            m_bConnected = ConnectionStatus();
+            return m_bConnected ? -1 : 0;
+        }
+        else{
+            return 0;
+        }
     }
 
     int ClMQTTClient::publish(const char* szFeed, const char* szMessage)

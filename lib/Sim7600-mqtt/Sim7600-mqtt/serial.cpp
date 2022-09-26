@@ -64,8 +64,8 @@ namespace SIM7600MQTT
         {
             if(m_pDbgLog){ m_pDbgLog->println(F("Baud Failed! Power off?"));}
 
-            digitalWrite(SIM7600_PIN_ONOFF, LOW);
-            delay(1000);
+            // digitalWrite(SIM7600_PIN_ONOFF, LOW);
+            // delay(1000);
   
             SERIAL.begin(m_nBaudRate);
             delay(250);
@@ -191,13 +191,6 @@ namespace SIM7600MQTT
         }
 
         return l > 0 ? 1 : 0;
-    }
-
-    bool ClATCommandSerial::sendCheckReplyNoInit(const char *send, const char *reply, uint16_t timeout)
-    {
-        if (! getReply(send, timeout) )
-            return false;
-        return (strcmp(m_aReplybuffer, reply) == 0);
     }
 
     bool ClATCommandSerial::sendCheckReply(const char *send, const char *reply, uint16_t timeout)
