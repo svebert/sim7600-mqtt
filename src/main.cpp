@@ -34,30 +34,31 @@
 #define PRINTLN(X)
 #endif
 
-void Check_Queue(bool bReturnQueue){
-	if(!bReturnQueue)
-	{
-		if(g_pMsgQueue->m_nConnectionError == 1){
-			PRINTFLN("!!failed to connect");
+void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected){
+	bIsConnected = false;
+	if(g_pMsgQueue->m_nConnectionError == 1){
+		PRINTFLN("!!failed to connect");
+	}
+	else if(g_pMsgQueue->m_nConnectionError == 2){
+		PRINTFLN("!!failed to disconnect");
+	}
+	else{
+		if(g_pMsgQueue->m_nErrorCount > 0){
+
+			PRINTLN(String(F("!!Failed to send all messages: ")) + String(g_pMsgQueue->m_nErrorCount) + String(F("/")) + String(g_pMsgQueue->m_nPublishCount));
 		}
-		else if(g_pMsgQueue->m_nConnectionError == 2){
-			PRINTFLN("!!failed to disconnect");
+		else if(g_pMsgQueue->m_nPublishCount == 0){
+			//PRINTFLN("!!added to buffer");
 		}
 		else{
-			if(g_pMsgQueue->m_nErrorCount > 0){
-
-				PRINTLN(String(F("!!Failed to send all messages: ")) + String(g_pMsgQueue->m_nErrorCount) + String(F("/")) + String(g_pMsgQueue->m_nPublishCount));
-			}
-			else if(g_pMsgQueue->m_nPublishCount == 0){
-				PRINTFLN("!!added to buffer");
-			}
-			else{
-				PRINTFLN("!!send");
-			}
+			PRINTFLN("!!send");
+			bIsConnected = true;
 		}
-	}
+	}	
 }
 
+
+#define MESSAGE_QUEUE_SIZE 4
 
 void setup() {
 delay(5000); //security wait
@@ -71,13 +72,13 @@ delay(5000); //security wait
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
-	const String cpFeeds[MESSAGE_QUEUE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
+	const String cpFeeds[MESSAGE_QUEUE_SIZE] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
 								MQTT_PUB_PRESSURE_FEED,
 								MQTT_PUB_STATUS_FEED};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
-	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, &Serial)){
+	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, MESSAGE_QUEUE_SIZE, &Serial)){
 		 PRINTFLN("Could not init MsgQueue");			
 	}
 	PRINTFLN("g_pMsgQueue ok");
@@ -113,16 +114,13 @@ void loop()
 	}
 
 	PRINTFLN("add messages...");
-	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature())));
-	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity())));
-	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure())));
+	bool bIsConnected, bDummy;
+	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature())), bIsConnected);
+	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity())), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure())), bDummy);
 
-	if(nLoopCount % MESSAGE_QUEUE_SIZE == 0 && nLoopCount != 0)
-	{
+	if(bIsConnected){
 		PRINTF("subscribe (retained)...");
-		if(!g_pSim7600->isConnected()){
-			g_pSim7600->connect();
-		}
 		String sSubMsg;
 		if(g_pSim7600->subscribe_retained(MQTT_SUB_FEED, sSubMsg) != 0)
 		{
@@ -134,9 +132,10 @@ void loop()
 		}
 		delay(250);
 		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
+		g_pSim7600->disconnect();
 	}
-	Check_Queue(g_pMsgQueue->AddMessage(3, String(nErrorCode) + String("W")+String(gnLoopDelay/1000)));
-	g_pSim7600->disconnect();
+	
+	Check_Queue(g_pMsgQueue->AddMessage(3, String(nErrorCode) + String("W")+String(gnLoopDelay/1000), true), bDummy);
 	nLoopCount++;
 
 	// g_rtc.setTime(0,0,0);

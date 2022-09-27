@@ -49,7 +49,7 @@ namespace SIM7600MQTT
             if(m_pDbgLog){m_pDbgLog->println("!connected!");}      
             return true;
         }
-        else if(sReply == F("+CMQTTDISC: 0,1") || sReply == F("ERROR"))
+        else if(sReply == F("+CMQTTDISC: 0,1") || sReply == F("ERROR") || sReply == F("+SIMCARD: NOT AVAILABLE"))
         {
             if(m_pDbgLog){m_pDbgLog->println("!not connected!");}      
         }
@@ -60,11 +60,11 @@ namespace SIM7600MQTT
         return false;
     }
 
-    int ClMQTTClient::connect()
+    int ClMQTTClient::connect(unsigned int nRepeatScaler)
     {
         String sReply;
         bool bInitCFUN1=false;
-        for(int i=0; i <30; ++i){
+        for(unsigned int i=0; i <3*nRepeatScaler; ++i){
             bool bHaveReply = m_oSerial.getReply("AT+CREG?", sReply); 
             if(bHaveReply && (sReply == "OK" || sReply == "+CREG: 0,1")){
                 break;
@@ -81,7 +81,7 @@ namespace SIM7600MQTT
         delay(200);
         m_oSerial.sendCheckReply("AT+CMQTTSTART");
         delay(200);
-        for(int i=0; i <10; ++i){
+        for(unsigned int i=0; i <1*nRepeatScaler; ++i){
             bool bHaveReply = m_oSerial.getReply("AT+CMQTTACCQ=0,\"sven-860524\",0", sReply); 
             if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTACCQ: 0,19")){
                 break;
@@ -91,7 +91,7 @@ namespace SIM7600MQTT
             }
         }
 
-        for(int i=0; i <10; ++i){
+        for(unsigned int i=0; i <1*nRepeatScaler; ++i){
             bool bHaveReply = m_oSerial.getReply(m_sConnection.c_str(), sReply); 
             if(bHaveReply && (sReply == "OK" || sReply == "+CMQTTCONNECT: 0,0" || sReply == "+CMQTTCONNECT: 0,13")){
                 break;
