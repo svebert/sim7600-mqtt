@@ -111,7 +111,7 @@ namespace SIM7600MQTT
                     String sElement("{\"value\": ");
                     sElement += String(&m_aBuffers[nFeed].m_stElement[nBuffer].m_szMsg[0]);
                     sElement += String(", \"offset\": ");
-                    sElement += String(m_aBuffers[nFeed].m_aTimestamps[nBuffer] - m_aBuffers[nFeed].m_aTimestamps[0]);
+                    sElement += String(m_aBuffers[nFeed].m_aTimestamps[nBuffer] - m_aBuffers[nFeed].m_aTimestamps[m_anBufferIdx[nFeed]]);
                     if(nBuffer < m_anBufferIdx[nFeed] -1){
                         sElement += "},";
                     }

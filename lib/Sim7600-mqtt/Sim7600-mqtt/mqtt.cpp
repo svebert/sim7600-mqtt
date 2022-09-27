@@ -71,6 +71,7 @@ namespace SIM7600MQTT
             }
             else{
                 if(!bInitCFUN1){
+                    m_oSerial.sendCheckReply("ATE0");
                     m_oSerial.sendCheckReply("AT+CFUN=1");
                     bInitCFUN1=true;
                 }

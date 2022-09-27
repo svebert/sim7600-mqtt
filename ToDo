@@ -1,0 +1,7 @@
+* Compare Flightmode vs Relay
+    --> if CFUNC 0 is not enough try to switch on/off with transistor
+    FlightMode: 52 mA vs Relay 52 mA
+* Arduino Sleep
+    --> Try Timer2 somehow, millis is broken in standbymode
+* Implement Measurement of Voltages
+* Find reason for 50 mA
