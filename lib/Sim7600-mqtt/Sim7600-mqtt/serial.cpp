@@ -72,7 +72,7 @@ namespace SIM7600MQTT
             sendCheckReply("AT+CRESET", "OK", 3000);
             bool bHaveReboot = false;
             for(int i = 0; i < 30; ++i){
-                if(sendCheckReply("ATE0", "ATE0")){bHaveReboot=true;break;}
+                if(sendCheckReply("ATE0", "OK")){bHaveReboot=true;break;}
                 delay(2000);
             }
             if(!bHaveReboot){
@@ -81,7 +81,7 @@ namespace SIM7600MQTT
                 delay(250);
                 sendCheckReply("AT+CRESET", "OK", 3000);
                 for(int i = 0; i < 30; ++i){
-                    if(sendCheckReply("ATE0", "ATE0")){bHaveReboot=true;break;}
+                    if(sendCheckReply("ATE0", "OK")){bHaveReboot=true;break;}
                     delay(2000);
                 }
                 SetBaudRate(m_nBaudRateInit, m_nBaudRate);
@@ -89,7 +89,7 @@ namespace SIM7600MQTT
 
             for(size_t nCnt = 0; nCnt < 30; ++nCnt){
                 String sMsg;
-                sendCheckReply("ATE0", "ATE0");
+                sendCheckReply("ATE0", "OK");
                 bool bHaveReply = getReply("AT+CMQTTDISC?", sMsg);
                 if(bHaveReply && sMsg.startsWith("+CMQTTDISC:")){
                     m_bInit = true;
