@@ -16,6 +16,8 @@ class ClMQTTClient
         int publish(const char* szFeed, const char* szMessage);
         // int get_subscribe(const String& sFeed, String& sMsg); //get retained message
         int subscribe_retained(const String& sFeed, String& rsMsg); //get retained message
+        bool GetMessage(const String& sFeed, unsigned long& rNumber);
+        bool GetMessage(const String& sFeed, String& sMsg);
         bool isConnected();
     private:
         bool flightMode();

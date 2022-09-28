@@ -12,8 +12,6 @@
 #define REPLY_OK "OK"
 #define BUFFERLEN 127
 
-#define SIM7600_PIN_ONOFF 5
-
 namespace SIM7600MQTT
 {
     class ClATCommandSerial

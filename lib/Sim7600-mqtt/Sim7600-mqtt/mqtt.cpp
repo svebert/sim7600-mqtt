@@ -8,7 +8,6 @@ namespace SIM7600MQTT
     m_oSerial(nTX, nRX, nBaudRate, 115200U, pLog),
     m_pDbgLog(pLog)
     { 
-        //pinMode(SIM7600_PIN_ONOFF, OUTPUT);
         disconnect();
     }
 
@@ -29,9 +28,6 @@ namespace SIM7600MQTT
         if(bHaveReply && sMsg=="OK"){
             bOK=true;
         }
-        //if(bOK){delay(5000);m_bPoweredOff=true;}
-        //m_oSerial.DeInit();
-        //digitalWrite(SIM7600_PIN_ONOFF, HIGH);
         return bOK;
     }
 
@@ -110,6 +106,7 @@ namespace SIM7600MQTT
     {
         if(m_bConnected)
         {
+            delay(250);
             m_oSerial.sendCheckReply("AT+CMQTTDISC=0,60");        
             m_oSerial.sendCheckReply("AT+CMQTTREL=0");
             m_oSerial.sendCheckReply("AT+CMQTTSTOP");
@@ -134,8 +131,14 @@ namespace SIM7600MQTT
         sMsg += String(strlen(szMessage));
         m_oSerial.sendCheckReply(sMsg.c_str(), ">");
         m_oSerial.sendCheckReply(szMessage);
-
-        return m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,100") ? 0 : -1;
+        String sReply;
+        m_oSerial.getReply("AT+CMQTTPUB=0,1,100", sReply);
+        if(sReply == "OK" || sReply == "+CMQTTPUB: 0,18"|| sReply == "+CMQTTPUB: 0,0"){
+            return 0;
+        }
+        else{
+            return -1;
+        }
     }
 
     bool ClMQTTClient::Parse(const String& sIn, String& sOutMsg){
@@ -186,6 +189,28 @@ namespace SIM7600MQTT
         m_oSerial.sendCheckReply(sATMsg.c_str(), ">");
         m_oSerial.sendCheckReply(sFeed.c_str());
         return bHaveMsg ? 0 : -1;
+    }
+
+    bool ClMQTTClient::GetMessage(const String& sFeed, unsigned long& rNumber){
+		String sSubMsg;
+		if(subscribe_retained(sFeed, sSubMsg) != 0)
+		{
+				return false;
+		}
+		else{
+			rNumber = atoi(sSubMsg.c_str());
+            return true;
+		}
+    }
+
+    bool ClMQTTClient::GetMessage(const String& sFeed, String& sMsg){
+		if(subscribe_retained(sFeed, sMsg) != 0)
+		{
+				return false;
+		}
+		else{
+            return true;
+		}
     }
     // int ClMQTTClient::get_subscribe(const String& sFeed, String& rsMsg){
 

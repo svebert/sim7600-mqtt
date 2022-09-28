@@ -8,13 +8,15 @@
 #include "sim7600.h"
 #include "sensor_bme680.h"
 //#include "sleep_time.h"
+#include "relay.h"
 
 #define CALIB_TEMP -1.5
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
 #define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
 #define MQTT_PUB_PRESSURE_FEED "traeholm/pressure"
 #define MQTT_PUB_STATUS_FEED "traeholm/status"
-#define MQTT_SUB_FEED "traeholm/timing"
+#define MQTT_SUB_FEED_TIMING "traeholm/timing"
+#define MQTT_SUB_FEED_RELAY "traeholm/relay"
 
 #define DEBUG //uncomment for debugging
 
@@ -46,6 +48,9 @@ void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected){
 		if(g_pMsgQueue->m_nErrorCount > 0){
 
 			PRINTLN(String(F("!!Failed to send all messages: ")) + String(g_pMsgQueue->m_nErrorCount) + String(F("/")) + String(g_pMsgQueue->m_nPublishCount));
+			if(g_pMsgQueue->m_nPublishCount > 0){
+				bIsConnected = true;
+			}
 		}
 		else if(g_pMsgQueue->m_nPublishCount == 0){
 			//PRINTFLN("!!added to buffer");
@@ -55,6 +60,15 @@ void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected){
 			bIsConnected = true;
 		}
 	}	
+}
+
+void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCounter, bool bRelay, String &sJson){
+	sJson = "{";
+	sJson += "\"error\": " + String(nErrorCode);
+	sJson += ", \"delay\": " + String(nDelay);
+	sJson += ", \"loop\": " + String(nLoopCounter);
+	sJson += ", \"relay\": " +String(bRelay ? 1 : 0);
+	sJson += "}";
 }
 
 
@@ -91,11 +105,13 @@ delay(5000); //security wait
 
 	// g_rtc.begin();
 	// PRINTFLN("g_rtc ok");
+	g_pRelay = new ClRelay();
+	g_pRelay->Init();
+	PRINTFLN("g_pRelay ok");
 }
 
-unsigned long gnLoopDelay{5000};
-
-unsigned long nLoopCount{0};
+unsigned long g_nLoopDelay{5000};
+unsigned long g_nLoopCount{0};
 
 void ISR(){
 	digitalWrite(LED_BUILTIN, HIGH);
@@ -104,7 +120,7 @@ void ISR(){
 void loop() 
 {
 	int nErrorCode = 0;
-	PRINTLN(String("measure(") + String(nLoopCount) + String(")..."));
+	PRINTLN(String("measure(") + String(g_nLoopCount) + String(")..."));
 	if(!g_pBME680->performReading()){
 		PRINTFLN("Failed reading BME680 sensor");nErrorCode=1;
 		if(!g_pBME680->init()){
@@ -120,23 +136,46 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure())), bDummy);
 
 	if(bIsConnected){
-		PRINTF("subscribe (retained)...");
-		String sSubMsg;
-		if(g_pSim7600->subscribe_retained(MQTT_SUB_FEED, sSubMsg) != 0)
+		PRINTF("get messages...");
+		unsigned long nLoopDelay;
+		PRINTF("timing:");
+		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_TIMING, nLoopDelay))
 		{
-				PRINTFLN("failed");nErrorCode=3;
+			PRINTLN(String("delay=") + String(nLoopDelay) );
+			g_nLoopDelay = max(3000UL, min(120000UL, nLoopDelay));
 		}
 		else{
-			PRINTLN(String(F("Message: ")) + sSubMsg);
-			gnLoopDelay = atoi(sSubMsg.c_str());
+			PRINTF("failed to get dealy");
+			nErrorCode=3;
 		}
-		delay(250);
-		gnLoopDelay = max(3000UL, min(120000UL, gnLoopDelay));
+		String sRelayMsg;
+		PRINTF("relay:");
+		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_RELAY, sRelayMsg))
+		{
+			PRINTLN(sRelayMsg);
+			if(sRelayMsg == "ON"){
+				PRINTF("relay on!");
+				g_pRelay->On();
+			}
+			else if(sRelayMsg == "OFF"){
+				PRINTF("relay off!");
+				g_pRelay->Off();
+			}
+		}
+		else{
+			PRINTF("failed to get relay state");
+			nErrorCode=4;
+		}
+
 		g_pSim7600->disconnect();
 	}
-	
-	Check_Queue(g_pMsgQueue->AddMessage(3, String(nErrorCode) + String("W")+String(gnLoopDelay/1000), true), bDummy);
-	nLoopCount++;
+
+	g_pRelay->Check();	
+
+	String sStatusJSON;
+	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pRelay->Status(), sStatusJSON);
+	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, true), bDummy);
+	g_nLoopCount++;
 
 	// g_rtc.setTime(0,0,0);
 	// g_rtc.setDate(24,05,2022);
@@ -150,5 +189,5 @@ void loop()
 	// digitalWrite(LED_BUILTIN, LOW);
 	// g_rtc.standbyMode();
 
-	delay(gnLoopDelay);
+	delay(g_nLoopDelay);
 }

@@ -64,7 +64,7 @@ namespace SIM7600MQTT
         {
             if(m_pDbgLog){ m_pDbgLog->println(F("Baud Failed! Power off?"));}
 
-            // digitalWrite(SIM7600_PIN_ONOFF, LOW);
+    
             // delay(1000);
   
             SERIAL.begin(m_nBaudRate);
