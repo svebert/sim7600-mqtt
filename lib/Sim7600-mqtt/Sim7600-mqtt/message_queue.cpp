@@ -129,16 +129,23 @@ namespace SIM7600MQTT
                     m_nPublishCount++;
                     int nErr = 0;
                     nErr = m_pMQTTClient->publish(&(m_pBuffers[nFeed].m_sFeed[0]), sJsonMsg.c_str());
-                    if(nErr == -1){
-                        //try again
-                        delay(1000);
-                        nErr = m_pMQTTClient->publish(&(m_pBuffers[nFeed].m_sFeed[0]), sJsonMsg.c_str());
+                    unsigned long nDelay = m_pBuffers[nFeed].m_nBufferIdx*150;
+                    for(size_t nResendCount = 0; nResendCount < 4; ++nResendCount)
+                    {
+                        if(nErr == -1){
+                            //try again
+                            delay(nDelay +  nResendCount*500);
+                            nErr = m_pMQTTClient->publish(&(m_pBuffers[nFeed].m_sFeed[0]), sJsonMsg.c_str());
+                        }
+                        else{
+                            break;
+                        }
                     }
                     if(nErr!=0){
 
                         m_nErrorCount++;
                     }
-                    delay(m_pBuffers[nFeed].m_nBufferIdx*150);
+                    delay(1000);
                 }
             }
 
