@@ -133,11 +133,15 @@ namespace SIM7600MQTT
         m_oSerial.sendCheckReply(szMessage);
         String sReply;
         m_oSerial.getReply("AT+CMQTTPUB=0,1,100", sReply);
-        if(sReply == "OK" || sReply == "+CMQTTPUB: 0,18"|| sReply == "+CMQTTPUB: 0,0"){
+        if(sReply == "OK" || sReply == "+CMQTTPUB: 0,0"){
             return 0;
         }
-        else{
+        else if(sReply == "+CMQTTPUB: 0,18" || sReply == "+CMQTTPUB: 0,14"){
+            delay(1000);
             return -1;
+        }
+        else{
+            return -2;
         }
     }
 

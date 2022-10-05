@@ -9,14 +9,17 @@
 #include "sensor_bme680.h"
 //#include "sleep_time.h"
 #include "relay.h"
+#include "voltage.h"
 
-#define CALIB_TEMP -1.5
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
 #define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
 #define MQTT_PUB_PRESSURE_FEED "traeholm/pressure"
 #define MQTT_PUB_STATUS_FEED "traeholm/status"
 #define MQTT_SUB_FEED_TIMING "traeholm/timing"
 #define MQTT_SUB_FEED_RELAY "traeholm/relay"
+#define MQTT_PUB_VOLTAGE1_FEED "traeholm/voltage1"
+#define MQTT_PUB_VOLTAGE2_FEED "traeholm/voltage2"
+#define MQTT_PUB_VOLTAGE3_FEED "traeholm/voltage3"
 
 #define DEBUG //uncomment for debugging
 
@@ -72,13 +75,14 @@ void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCount
 }
 
 
-#define MESSAGE_QUEUE_SIZE 4
+#define MESSAGE_QUEUE_SIZE 7
 
 void setup() {
 delay(5000); //security wait
 #ifdef DEBUG
 	Serial.begin(SIM7600_BAUD_RATE);
 #endif
+	
 	PRINTFLN("Serial ok");
 	//SoftwareSerial oSer(ARDUINO_RX, ARDUINO_TX);
 #ifdef DEBUG
@@ -89,7 +93,10 @@ delay(5000); //security wait
 	const String cpFeeds[MESSAGE_QUEUE_SIZE] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
 								MQTT_PUB_PRESSURE_FEED,
-								MQTT_PUB_STATUS_FEED};
+								MQTT_PUB_STATUS_FEED, 
+								MQTT_PUB_VOLTAGE1_FEED,
+								MQTT_PUB_VOLTAGE2_FEED,
+								MQTT_PUB_VOLTAGE3_FEED,};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, MESSAGE_QUEUE_SIZE, &Serial)){
@@ -108,6 +115,13 @@ delay(5000); //security wait
 	g_pRelay = new ClRelay();
 	g_pRelay->Init();
 	PRINTFLN("g_pRelay ok");
+
+#ifdef DEBUG
+	g_pVoltage = new ClVoltageMeasurement(&Serial);
+#else
+	g_pVoltage = new ClVoltageMeasurement();
+#endif
+	PRINTFLN("g_pVoltage ok");
 }
 
 unsigned long g_nLoopDelay{5000};
@@ -131,9 +145,12 @@ void loop()
 
 	PRINTFLN("add messages...");
 	bool bIsConnected, bDummy;
-	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature())), bIsConnected);
-	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity())), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure())), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2)), bIsConnected);
+	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1)), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2)), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1)), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1)), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1)), bDummy);
 
 	if(bIsConnected){
 		PRINTF("get messages...");
@@ -177,17 +194,17 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, true), bDummy);
 	g_nLoopCount++;
 
-	// g_rtc.setTime(0,0,0);
-	// g_rtc.setDate(24,05,2022);
-	// uint8_t nSleepSeconds = static_cast<uint8_t>(gnLoopDelay/1000UL);
-	// uint8_t nSleepMinutes = nSleepSeconds/60;
-	// nSleepSeconds = nSleepSeconds%60;
-	// PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds) + F("s"));
-	// g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds);
-	// g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
-	// g_rtc.attachInterrupt(ISR);
-	// digitalWrite(LED_BUILTIN, LOW);
-	// g_rtc.standbyMode();
+	// // g_rtc.setTime(0,0,0);
+	// // g_rtc.setDate(24,05,2022);
+	// // uint8_t nSleepSeconds = static_cast<uint8_t>(gnLoopDelay/1000UL);
+	// // uint8_t nSleepMinutes = nSleepSeconds/60;
+	// // nSleepSeconds = nSleepSeconds%60;
+	// // PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds) + F("s"));
+	// // g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds);
+	// // g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
+	// // g_rtc.attachInterrupt(ISR);
+	// // digitalWrite(LED_BUILTIN, LOW);
+	// // g_rtc.standbyMode();
 
 	delay(g_nLoopDelay);
 }
