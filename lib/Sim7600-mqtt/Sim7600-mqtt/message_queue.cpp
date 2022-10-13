@@ -40,10 +40,10 @@ namespace SIM7600MQTT
             }
         }
 
-        bool ClMessageQueue::AddMessageToBuffer(int nFeedIdx, const String& sMsg)
+        bool ClMessageQueue::AddMessageToBuffer(int nFeedIdx, const String& sMsg, unsigned long nTimestamp)
         {
                 m_pBuffers[nFeedIdx].m_oData[m_pBuffers[nFeedIdx].m_nBufferIdx] = sMsg;
-                m_pBuffers[nFeedIdx].m_aTimestamps[m_pBuffers[nFeedIdx].m_nBufferIdx] = millis();
+                m_pBuffers[nFeedIdx].m_aTimestamps[m_pBuffers[nFeedIdx].m_nBufferIdx] = nTimestamp;
                 m_pBuffers[nFeedIdx].m_nBufferIdx++;
                 return true;
         }
@@ -116,7 +116,7 @@ namespace SIM7600MQTT
                         String sElement("{\"value\": ");
                         sElement += m_pBuffers[nFeed].m_oData[nBuffer];
                         sElement += String(", \"offset\": ");
-                        sElement += String( - static_cast<long>(nTSend - m_pBuffers[nFeed].m_aTimestamps[nBuffer]));
+                        sElement += String( - static_cast<long>((nTSend - m_pBuffers[nFeed].m_aTimestamps[nBuffer])*100));
                         if(nBuffer < m_pBuffers[nFeed].m_nBufferIdx -1){
                             sElement += "},";
                         }
@@ -152,7 +152,7 @@ namespace SIM7600MQTT
             return true;
         }
 
-        bool ClMessageQueue::AddMessage(int nFeedIdx, const String& sMsg, bool bDisconnectWhenSendFinished)
+        bool ClMessageQueue::AddMessage(int nFeedIdx, const String& sMsg, unsigned long nTimestamp, bool bDisconnectWhenSendFinished)
         {
 
             if(nFeedIdx >= m_nBufferCount){
@@ -164,7 +164,7 @@ namespace SIM7600MQTT
             m_nConnectionError = 0;
             if(m_pBuffers[nFeedIdx].m_nBufferIdx < MESSAGE_MAX_QUEUE_SIZE)
             {
-                return AddMessageToBuffer(nFeedIdx, sMsg);
+                return AddMessageToBuffer(nFeedIdx, sMsg, nTimestamp);
             }
             else
             {
@@ -174,9 +174,8 @@ namespace SIM7600MQTT
                 {
                     m_pBuffers[nI].clear();             
                 }
-                bool bAddMessage = AddMessageToBuffer(nFeedIdx, sMsg);
-                return bAddMessage && bSendSuccess;
-                
+                bool bAddMessage = AddMessageToBuffer(nFeedIdx, sMsg, nTimestamp);
+                return bAddMessage && bSendSuccess;                
             }           
         }
 

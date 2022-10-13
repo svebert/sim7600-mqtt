@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include "sim7600.h"
 #include "sensor_bme680.h"
-//#include "sleep_time.h"
+#include "sleep_time.h"
 #include "relay.h"
 #include "voltage.h"
 
@@ -110,8 +110,8 @@ delay(5000); //security wait
 	}
 	PRINTFLN("g_pBME680 ok");
 
-	// g_rtc.begin();
-	// PRINTFLN("g_rtc ok");
+	g_rtc.begin();
+	PRINTFLN("g_rtc ok");
 	g_pRelay = new ClRelay();
 	g_pRelay->Init();
 	PRINTFLN("g_pRelay ok");
@@ -126,13 +126,41 @@ delay(5000); //security wait
 
 unsigned long g_nLoopDelay{5000};
 unsigned long g_nLoopCount{0};
+unsigned long g_nCurrentTimeStamp_tenth{0};
+unsigned long g_nMillis0{0};
 
 void ISR(){
 	digitalWrite(LED_BUILTIN, HIGH);
 }
 
+unsigned long tenth(){
+	return g_nCurrentTimeStamp_tenth + (millis() -g_nMillis0)/100;
+}
+
+void sleep(bool bEnergySavingMode=true){
+	if(bEnergySavingMode){
+		g_rtc.setTime(0,0,0);
+		g_rtc.setDate(24,05,2022);
+		uint8_t nSleepSeconds = static_cast<uint8_t>(g_nLoopDelay/1000UL);
+		uint8_t nSleepMinutes = nSleepSeconds/60;
+		nSleepSeconds = nSleepSeconds%60;
+		PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds) + F("s"));
+		g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds);
+		g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
+		g_rtc.attachInterrupt(ISR);
+		digitalWrite(LED_BUILTIN, LOW);
+		g_nCurrentTimeStamp_tenth =  tenth() + g_nLoopDelay/100;
+		g_rtc.standbyMode();
+	}
+	else{
+		g_nCurrentTimeStamp_tenth =  tenth() + g_nLoopDelay/100;
+		delay(g_nLoopDelay);
+	}
+}
+
 void loop() 
 {
+	g_nMillis0 = millis();
 	int nErrorCode = 0;
 	PRINTLN(String("measure(") + String(g_nLoopCount) + String(")..."));
 	if(!g_pBME680->performReading()){
@@ -145,12 +173,13 @@ void loop()
 
 	PRINTFLN("add messages...");
 	bool bIsConnected, bDummy;
-	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2)), bIsConnected);
-	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1)), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2)), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1)), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1)), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1)), bDummy);
+	unsigned long nTSSensor = tenth();
+	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2), nTSSensor), bIsConnected);
+	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1), nTSSensor), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2), nTSSensor), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1), tenth()), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1), tenth()), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1), tenth()), bDummy);
 
 	if(bIsConnected){
 		PRINTF("get messages...");
@@ -191,20 +220,7 @@ void loop()
 
 	String sStatusJSON;
 	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pRelay->Status(), sStatusJSON);
-	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, true), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy);
 	g_nLoopCount++;
-
-	// // g_rtc.setTime(0,0,0);
-	// // g_rtc.setDate(24,05,2022);
-	// // uint8_t nSleepSeconds = static_cast<uint8_t>(gnLoopDelay/1000UL);
-	// // uint8_t nSleepMinutes = nSleepSeconds/60;
-	// // nSleepSeconds = nSleepSeconds%60;
-	// // PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds) + F("s"));
-	// // g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds);
-	// // g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
-	// // g_rtc.attachInterrupt(ISR);
-	// // digitalWrite(LED_BUILTIN, LOW);
-	// // g_rtc.standbyMode();
-
-	delay(g_nLoopDelay);
+	sleep(true);
 }

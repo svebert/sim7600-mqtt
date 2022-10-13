@@ -38,7 +38,7 @@ namespace SIM7600MQTT
         public:
             ~ClMessageQueue(){DeInit();}
             bool Init(ClMQTTClient* pMQTTClient, const String * pFeeds, unsigned int nFeeds, Stream * pDbgLog=nullptr);
-            bool AddMessage(int nFeedIdx, const String& sMsg, bool bDisconnectWhenSendFinished=false);
+            bool AddMessage(int nFeedIdx, const String& sMsg, unsigned long nTimestamp_tenth, bool bDisconnectWhenSendFinished=false);
 
             size_t m_nErrorCount{0};
             size_t m_nPublishCount{0};
@@ -52,7 +52,7 @@ namespace SIM7600MQTT
             const int m_nMaxReconnections{5};
             bool m_bSendJson{true};
 
-            bool AddMessageToBuffer(int nFeedIdx, const String& sMsg);
+            bool AddMessageToBuffer(int nFeedIdx, const String& sMsg, unsigned long nTimestamp_tenth);
             bool Send(bool bDisconnectWhenSendFinished=false);
             bool SendIterative();
             bool SendJson();
