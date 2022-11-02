@@ -7,13 +7,17 @@
 #define R1_Ohm 31000.0
 #define R2_Ohm 980.0
 #define REFERENCE_VOLTAGE 2.23//4.096
+// #define VOLTAGERELAY_PIN_ONOFF 4
 
 class ClVoltageMeasurement{
     public:
     ClVoltageMeasurement(Stream * pDbgLog = nullptr) :
-    m_pDbgLog(pDbgLog){
+    m_pDbgLog(pDbgLog)
+    {
          analogReference(AR_INTERNAL);
+        //  pinMode(VOLTAGERELAY_PIN_ONOFF, OUTPUT);
     }
+
     float MeasureVoltage(unsigned int nNr=0){
         int nADCValue;
         pin_size_t nPin;
@@ -41,9 +45,34 @@ class ClVoltageMeasurement{
         }
         return fInVoltage;
     }
+
+    // void SwitchVoltageRelayOn(){
+    //     if(m_nVoltageRelay == 1 || m_nVoltageRelay == 2){
+    //         digitalWrite(VOLTAGERELAY_PIN_ONOFF, HIGH);
+    //     }
+    // }
+
+    // void SwitchVoltageRelayOff(){
+    //     if(m_nVoltageRelay == 0 || m_nVoltageRelay == 2){
+    //         digitalWrite(VOLTAGERELAY_PIN_ONOFF, LOW);
+    //     }
+    // }
+
+    // void SetVoltageRelayState(unsigned char n){
+    //     m_nVoltageRelay = n;
+    //     if(n == 0){
+    //         SwitchVoltageRelayOff();
+    //     }
+    // }
+    // unsigned char GetVoltageRelayState(){
+    //     return m_nVoltageRelay;
+    // }
+
     private:
     Stream * m_pDbgLog {nullptr};
+    //unsigned char m_nVoltageRelay{2};
 
 };
 
 ClVoltageMeasurement * g_pVoltage = nullptr;
+

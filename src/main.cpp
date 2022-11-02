@@ -17,6 +17,7 @@
 #define MQTT_PUB_STATUS_FEED "traeholm/status"
 #define MQTT_SUB_FEED_TIMING "traeholm/timing"
 #define MQTT_SUB_FEED_RELAY "traeholm/relay"
+#define MQTT_SUB_FEED_VOLTAGERELAY "traeholm/voltage_relay"
 #define MQTT_PUB_VOLTAGE1_FEED "traeholm/voltage1"
 #define MQTT_PUB_VOLTAGE2_FEED "traeholm/voltage2"
 #define MQTT_PUB_VOLTAGE3_FEED "traeholm/voltage3"
@@ -65,17 +66,17 @@ void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected){
 	}	
 }
 
-void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCounter, bool bRelay, String &sJson){
+void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCounter, bool bPowerRelay, String &sJson){
 	sJson = "{";
 	sJson += "\"error\": " + String(nErrorCode);
 	sJson += ", \"delay\": " + String(nDelay);
 	sJson += ", \"loop\": " + String(nLoopCounter);
-	sJson += ", \"relay\": " +String(bRelay ? 1 : 0);
+	sJson += ", \"powerrelay\": " +String(bPowerRelay ? 1 : 0);
 	sJson += "}";
 }
 
 
-#define MESSAGE_QUEUE_SIZE 7
+#define MESSAGE_FEED_COUNT 7
 
 void setup() {
 delay(5000); //security wait
@@ -90,7 +91,7 @@ delay(5000); //security wait
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
 #endif
-	const String cpFeeds[MESSAGE_QUEUE_SIZE] = { MQTT_PUB_TEMPERATURE_FEED, 
+	const String cpFeeds[MESSAGE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
 								MQTT_PUB_PRESSURE_FEED,
 								MQTT_PUB_STATUS_FEED, 
@@ -99,7 +100,7 @@ delay(5000); //security wait
 								MQTT_PUB_VOLTAGE3_FEED,};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
-	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, MESSAGE_QUEUE_SIZE, &Serial)){
+	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, MESSAGE_FEED_COUNT, &Serial)){
 		 PRINTFLN("Could not init MsgQueue");			
 	}
 	PRINTFLN("g_pMsgQueue ok");
@@ -112,9 +113,9 @@ delay(5000); //security wait
 
 	g_rtc.begin();
 	PRINTFLN("g_rtc ok");
-	g_pRelay = new ClRelay();
-	g_pRelay->Init();
-	PRINTFLN("g_pRelay ok");
+	g_pPowerRelay = new ClRelay();
+	g_pPowerRelay->Init();
+	PRINTFLN("g_pPowerRelay ok");
 
 #ifdef DEBUG
 	g_pVoltage = new ClVoltageMeasurement(&Serial);
@@ -177,6 +178,7 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2), nTSSensor), bIsConnected);
 	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1), nTSSensor), bDummy);
 	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2), nTSSensor), bDummy);
+
 	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1), tenth()), bDummy);
 	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1), tenth()), bDummy);
 	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1), tenth()), bDummy);
@@ -201,11 +203,11 @@ void loop()
 			PRINTLN(sRelayMsg);
 			if(sRelayMsg == "ON"){
 				PRINTF("relay on!");
-				g_pRelay->On();
+				g_pPowerRelay->On();
 			}
 			else if(sRelayMsg == "OFF"){
 				PRINTF("relay off!");
-				g_pRelay->Off();
+				g_pPowerRelay->Off();
 			}
 		}
 		else{
@@ -216,10 +218,10 @@ void loop()
 		g_pSim7600->disconnect();
 	}
 
-	g_pRelay->Check();	
+	g_pPowerRelay->Check();	
 
 	String sStatusJSON;
-	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pRelay->Status(), sStatusJSON);
+	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pPowerRelay->Status(), sStatusJSON);
 	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy);
 	g_nLoopCount++;
 	sleep(true);

@@ -36,4 +36,4 @@ class ClRelay{
 
 };
 
-ClRelay * g_pRelay = nullptr;
+ClRelay * g_pPowerRelay = nullptr;
