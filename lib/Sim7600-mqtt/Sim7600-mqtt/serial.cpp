@@ -33,6 +33,7 @@ namespace SIM7600MQTT
         delay(100);
         String sMsg(F("AT+IPR="));
         sMsg += String(nNewBaudRate);
+        sendCheckReply(sMsg.c_str(), "OK");
         delay(250);
         SERIAL.begin(nNewBaudRate);
         delay(250);
@@ -45,6 +46,15 @@ namespace SIM7600MQTT
         {
             return 0;
         }
+
+        // SERIAL.begin(m_nBaudRateInit);
+        // sendCheckReply("ATE0", "OK");
+        // delay(100);
+        // String sMsg(F("AT+IPRX="));
+        // sMsg += String(m_nBaudRate);
+        // delay(250);
+        // sendCheckReply(sMsg, "OK");
+
         m_bInit = true; //to prevent infinit loop
         if(HaveBaudRate(m_nBaudRateInit))
         {

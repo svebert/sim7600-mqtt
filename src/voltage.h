@@ -4,8 +4,8 @@
 #define ANALOG_IN_PIN_1 A1
 #define ANALOG_IN_PIN_2 A2
 #define ANALOG_IN_PIN_3 A3
-#define R1_Ohm 31000.0
-#define R2_Ohm 980.0
+#define R1_Ohm 57000.0
+#define R2_Ohm 2200.0
 #define REFERENCE_VOLTAGE 2.23//4.096
 // #define VOLTAGERELAY_PIN_ONOFF 4
 
