@@ -55,7 +55,7 @@ namespace SIM7600MQTT
                 return false;
             }
 
-            int nConnection = 0;
+            unsigned int nConnection = 0;
             unsigned int nRepeatScaler = 1;
             while(!m_pMQTTClient->isConnected() && nConnection < m_nMaxReconnections)
             {
@@ -134,7 +134,7 @@ namespace SIM7600MQTT
                     {
                         if(nErr == -1){
                             //try again
-                            delay(nDelay +  nResendCount*500);
+                            delay(nDelay + nResendCount*500);
                             nErr = m_pMQTTClient->publish(&(m_pBuffers[nFeed].m_sFeed[0]), sJsonMsg.c_str());
                         }
                         else{

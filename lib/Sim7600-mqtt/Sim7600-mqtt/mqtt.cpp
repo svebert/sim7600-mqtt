@@ -3,10 +3,11 @@
 
 namespace SIM7600MQTT
 {
-    ClMQTTClient::ClMQTTClient(String sConnection, int nTX, int nRX, unsigned int nBaudRate, Stream *pLog) :
+    ClMQTTClient::ClMQTTClient(String sConnection, int nTX, int nRX, unsigned int nBaudRate, Stream *pLog, String sAPN) :
     m_sConnection(sConnection),
     m_oSerial(nTX, nRX, nBaudRate, 115200U, pLog),
-    m_pDbgLog(pLog)
+    m_pDbgLog(pLog),
+    m_sAPN(sAPN)
     { 
         disconnect();
     }
@@ -14,6 +15,11 @@ namespace SIM7600MQTT
     ClMQTTClient::~ClMQTTClient()
     {
         disconnect();
+    }
+
+    void ClMQTTClient::reset()
+    {
+        m_oSerial.sendCheckReply("AT+CRESET", "OK", 1000);
     }
 
     bool ClMQTTClient::flightMode(){
@@ -31,6 +37,34 @@ namespace SIM7600MQTT
         return bOK;
     }
 
+    bool  ClMQTTClient::CheckAPN(){
+        String sMsg;
+        bool bHaveReply = m_oSerial.getReply("AT+CGDCONT?", sMsg);
+        if(sMsg.length() > 20 ){
+           auto sSubStr = sMsg.substring(18);
+           sSubStr=sSubStr.substring(0, m_sAPN.length());
+           if(m_pDbgLog){m_pDbgLog->println(sSubStr);}
+           if(sSubStr == m_sAPN){
+                return true;
+           }          
+        }
+        return false;        
+    }
+
+    bool ClMQTTClient::SetAPN(){
+        String sMsg("AT+CGDCONT=1,\"IP\",\"");
+        sMsg+=m_sAPN;
+        sMsg+= "\"";
+        bool bHaveReply{false};
+        for(unsigned int i=0; i<5; ++i){
+            bool bHaveReply = m_oSerial.sendCheckReply(sMsg.c_str());
+            if(bHaveReply){
+            return bHaveReply;}
+            delay(1500);
+        }
+        return bHaveReply;
+    }
+
     bool ClMQTTClient::ConnectionStatus()
     {
         String sReply;
@@ -45,7 +79,17 @@ namespace SIM7600MQTT
             if(m_pDbgLog){m_pDbgLog->println("!connected!");}      
             return true;
         }
-        else if(sReply == F("+CMQTTDISC: 0,1") || sReply == F("ERROR") || sReply == F("+SIMCARD: NOT AVAILABLE"))
+        else if(sReply == F("+SIMCARD: NOT AVAILABLE")){
+            if(!CheckAPN() && SetAPN()){
+                bHaveReply = m_oSerial.getReply("AT+CMQTTDISC?", sReply);
+                if(sReply == F("+CMQTTDISC: 0,0")){
+                    if(m_pDbgLog){m_pDbgLog->println("!connected!");}  
+                    return true;
+                }
+            }
+            if(m_pDbgLog){m_pDbgLog->println("!not connected!");}   
+        }
+        else if(sReply == F("+CMQTTDISC: 0,1") || sReply == F("ERROR"))
         {
             if(m_pDbgLog){m_pDbgLog->println("!not connected!");}      
         }
@@ -68,7 +112,10 @@ namespace SIM7600MQTT
             else{
                 if(!bInitCFUN1){
                     m_oSerial.sendCheckReply("ATE0");
-                    m_oSerial.sendCheckReply("AT+CFUN=1");
+                    m_oSerial.sendCheckReply("AT+CFUN=1");   
+                    if(!CheckAPN()){
+                        SetAPN();
+                    }         
                     bInitCFUN1=true;
                 }
                 delay(2000);

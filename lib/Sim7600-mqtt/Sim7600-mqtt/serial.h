@@ -35,7 +35,6 @@ namespace SIM7600MQTT
             Stream * m_pDbgLog; //serial for debugging 
             char m_aReplybuffer[BUFFERLEN];
             bool m_bInit{false};
-
             inline int available(void) {return SERIAL.available();}
             inline size_t write(uint8_t x) {return SERIAL.write(x);}
             inline int read(void) {return SERIAL.read();}

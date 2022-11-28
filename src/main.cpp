@@ -10,6 +10,7 @@
 #include "sleep_time.h"
 #include "relay.h"
 #include "voltage.h"
+#include "reset.h"
 
 #define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
 #define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
@@ -23,7 +24,7 @@
 #define MQTT_PUB_VOLTAGE3_FEED "traeholm/voltage3"
 
 #define DEBUG //uncomment for debugging
-
+#define RESET_COUNT MESSAGE_MAX_QUEUE_SIZE*15
 //config end
 #ifdef DEBUG
 #ifdef MICRO
@@ -87,9 +88,9 @@ delay(5000); //security wait
 	PRINTFLN("Serial ok");
 	//SoftwareSerial oSer(ARDUINO_RX, ARDUINO_TX);
 #ifdef DEBUG
-	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, &Serial);
+	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, &Serial, HOME_AUTH_SIM7600_APN);
 #else
-	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE);
+	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, nullptr, HOME_AUTH_SIM7600_APN);
 #endif
 	const String cpFeeds[MESSAGE_FEED_COUNT] = { MQTT_PUB_TEMPERATURE_FEED, 
 								MQTT_PUB_HUMIDITY_FEED,
@@ -123,6 +124,10 @@ delay(5000); //security wait
 	g_pVoltage = new ClVoltageMeasurement();
 #endif
 	PRINTFLN("g_pVoltage ok");
+
+	g_pReset = new ClReset();
+	g_pReset->Init();
+	PRINTFLN("g_pReset ok");
 }
 
 unsigned long g_nLoopDelay{5000};
@@ -190,7 +195,7 @@ void loop()
 		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_TIMING, nLoopDelay))
 		{
 			PRINTLN(String("delay=") + String(nLoopDelay) );
-			g_nLoopDelay = max(3000UL, min(120000UL, nLoopDelay));
+			g_nLoopDelay = max(3000UL, min(240000UL, nLoopDelay));
 		}
 		else{
 			PRINTF("failed to get dealy");
@@ -224,5 +229,11 @@ void loop()
 	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pPowerRelay->Status(), sStatusJSON);
 	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy);
 	g_nLoopCount++;
+
+	if( g_nLoopCount > RESET_COUNT){
+		PRINTF("RESET!");
+		g_pSim7600->reset();
+		g_pReset->HardReset();
+	}
 	sleep(true);
 }

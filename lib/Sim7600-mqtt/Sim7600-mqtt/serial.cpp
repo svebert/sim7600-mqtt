@@ -81,7 +81,7 @@ namespace SIM7600MQTT
             delay(250);
             sendCheckReply("AT+CRESET", "OK", 3000);
             bool bHaveReboot = false;
-            for(int i = 0; i < 30; ++i){
+            for(unsigned int i = 0; i < 30; ++i){
                 if(sendCheckReply("ATE0", "OK")){bHaveReboot=true;break;}
                 delay(2000);
             }
@@ -90,7 +90,7 @@ namespace SIM7600MQTT
                 SERIAL.begin(m_nBaudRateInit);
                 delay(250);
                 sendCheckReply("AT+CRESET", "OK", 3000);
-                for(int i = 0; i < 30; ++i){
+                for(unsigned int i = 0; i < 30; ++i){
                     if(sendCheckReply("ATE0", "OK")){bHaveReboot=true;break;}
                     delay(2000);
                 }

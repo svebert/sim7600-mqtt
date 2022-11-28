@@ -9,7 +9,7 @@ namespace SIM7600MQTT
 class ClMQTTClient
 {
     public:
-        ClMQTTClient(String sConnection, int nTX, int nRX, unsigned int nBaudRate=19200U, Stream * pDbgLog=nullptr);
+        ClMQTTClient(String sConnection, int nTX, int nRX, unsigned int nBaudRate=19200U, Stream * pDbgLog=nullptr, String sAPN="");
         ~ClMQTTClient();
         int connect(unsigned int nRepeatScaler=1);
         int disconnect();
@@ -19,14 +19,18 @@ class ClMQTTClient
         bool GetMessage(const String& sFeed, unsigned long& rNumber);
         bool GetMessage(const String& sFeed, String& sMsg);
         bool isConnected();
+        void reset();
     private:
         bool flightMode();
         bool ConnectionStatus();
         bool Parse(const String& sIn, String& sOutMsg);
+        bool CheckAPN();
+        bool SetAPN();
         const String m_sConnection;
         ClATCommandSerial m_oSerial;
         Stream * m_pDbgLog {nullptr};
         bool m_bConnected{true};
+        String m_sAPN;
 };
 
 }
