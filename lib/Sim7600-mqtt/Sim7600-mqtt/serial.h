@@ -5,7 +5,11 @@
 #define SERIAL m_oSerial
 #else
 #include <Arduino.h>
+#ifdef SERIAL
+#undef SERIAL
+#endif
 #define SERIAL Serial1
+
 #endif
 
 #define SIM7600MQTT_DEFAULT_TIMEOUT_MS 500

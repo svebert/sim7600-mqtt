@@ -146,7 +146,7 @@ unsigned long tenth(){
 void sleep(bool bEnergySavingMode=true){
 	if(bEnergySavingMode){
 		g_rtc.setTime(0,0,0);
-		g_rtc.setDate(24,05,2022);
+		g_rtc.setDate(24U,5U,22U);
 		uint8_t nSleepSeconds = static_cast<uint8_t>(g_nLoopDelay/1000UL);
 		uint8_t nSleepMinutes = nSleepSeconds/60;
 		nSleepSeconds = nSleepSeconds%60;
@@ -195,7 +195,7 @@ void loop()
 		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_TIMING, nLoopDelay))
 		{
 			PRINTLN(String("delay=") + String(nLoopDelay) );
-			g_nLoopDelay = max(3000UL, min(240000UL, nLoopDelay));
+			g_nLoopDelay = max(3000UL, min(600000UL, nLoopDelay));
 		}
 		else{
 			PRINTF("failed to get dealy");
