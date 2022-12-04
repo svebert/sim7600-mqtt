@@ -1,9 +1,3 @@
-#if BUILD_ENV_NAME == 'micro'
-#define MICRO
-#else
-#define MKRZERO
-#endif
-
 #include <Arduino.h>
 #include "sim7600.h"
 #include "sensor_bme680.h"
@@ -24,12 +18,9 @@
 #define MQTT_PUB_VOLTAGE3_FEED "traeholm/voltage3"
 
 #define DEBUG //uncomment for debugging
-#define RESET_COUNT MESSAGE_MAX_QUEUE_SIZE*15
+constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
 //config end
 #ifdef DEBUG
-#ifdef MICRO
-#include <SoftwareSerial.h>
-#endif
 #define PRINTF(X) Serial.print(F(X));
 #define PRINTFLN(X) Serial.println(F(X));
 #define PRINT(X) Serial.print(X);
@@ -86,7 +77,7 @@ delay(5000); //security wait
 #endif
 	
 	PRINTFLN("Serial ok");
-	//SoftwareSerial oSer(ARDUINO_RX, ARDUINO_TX);
+
 #ifdef DEBUG
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, &Serial, HOME_AUTH_SIM7600_APN);
 #else
@@ -139,21 +130,24 @@ void ISR(){
 	digitalWrite(LED_BUILTIN, HIGH);
 }
 
+//internal current time unit: tenth of a second
 unsigned long tenth(){
 	return g_nCurrentTimeStamp_tenth + (millis() -g_nMillis0)/100;
 }
 
 void sleep(bool bEnergySavingMode=true){
 	if(bEnergySavingMode){
-		g_rtc.setTime(0,0,0);
-		g_rtc.setDate(24U,5U,22U);
-		uint8_t nSleepSeconds = static_cast<uint8_t>(g_nLoopDelay/1000UL);
+		g_rtc.setTime(0, 0, 0);
+		g_rtc.setDate(24,5,22);
+		unsigned long nSleepSeconds = g_nLoopDelay/1000UL;
 		uint8_t nSleepMinutes = nSleepSeconds/60;
-		nSleepSeconds = nSleepSeconds%60;
-		PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds) + F("s"));
-		g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds);
+		uint8_t nSleepSeconds_uint8 = static_cast<uint8_t>(nSleepSeconds%60);
+		PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds_uint8) + F("s"));
+		g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds_uint8);
+		#ifdef MKRZERO
 		g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
 		g_rtc.attachInterrupt(ISR);
+		#endif
 		digitalWrite(LED_BUILTIN, LOW);
 		g_nCurrentTimeStamp_tenth =  tenth() + g_nLoopDelay/100;
 		g_rtc.standbyMode();
@@ -230,7 +224,7 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy);
 	g_nLoopCount++;
 
-	if( g_nLoopCount > RESET_COUNT){
+	if( g_nLoopCount >= g_nResetCount){
 		PRINTF("RESET!");
 		g_pSim7600->reset();
 		g_pReset->HardReset();
