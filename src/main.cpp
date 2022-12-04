@@ -12,7 +12,6 @@
 #define MQTT_PUB_STATUS_FEED "traeholm/status"
 #define MQTT_SUB_FEED_TIMING "traeholm/timing"
 #define MQTT_SUB_FEED_RELAY "traeholm/relay"
-#define MQTT_SUB_FEED_VOLTAGERELAY "traeholm/voltage_relay"
 #define MQTT_PUB_VOLTAGE1_FEED "traeholm/voltage1"
 #define MQTT_PUB_VOLTAGE2_FEED "traeholm/voltage2"
 #define MQTT_PUB_VOLTAGE3_FEED "traeholm/voltage3"
