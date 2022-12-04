@@ -40,7 +40,7 @@ namespace SIM7600MQTT
     bool  ClMQTTClient::CheckAPN(){
         String sMsg;
         bool bHaveReply = m_oSerial.getReply("AT+CGDCONT?", sMsg);
-        if(sMsg.length() > 20 ){
+        if(bHaveReply && sMsg.length() > 20 ){
            auto sSubStr = sMsg.substring(18);
            sSubStr=sSubStr.substring(0, m_sAPN.length());
            if(m_pDbgLog){m_pDbgLog->println(sSubStr);}
@@ -206,7 +206,10 @@ namespace SIM7600MQTT
         String sMsgLen = sIn.substring(nPos + sSearchString.length(), nPos2);    
         //if(m_pDbgLog){m_pDbgLog->println(">>>" + sMsgLen);}    
         int nMsgLen = atoi(sMsgLen.c_str());
-        if(sIn.length() < nPos2 + 1 + nMsgLen){
+        if(nMsgLen < 0){
+            return false;
+        }
+        if(sIn.length() < static_cast<unsigned int>(nPos2 + 1 + nMsgLen)){
             return false;
         }
         sOutMsg = sIn.substring(nPos2 + 1, nPos2 + 1 + nMsgLen);

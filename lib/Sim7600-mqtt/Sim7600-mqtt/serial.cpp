@@ -1,33 +1,29 @@
 #include "serial.h"
-#include <Arduino.h>
 
 namespace SIM7600MQTT
 {
-
     ClATCommandSerial::ClATCommandSerial(int nTX, int nRX, unsigned long nBaudRate, unsigned long nBaudRateInit, Stream *pLog) :
-#ifdef MICRO
-        SERIAL(nRX, nTX),
-#endif
         m_nBaudRate(nBaudRate),
         m_nBaudRateInit(nBaudRateInit),
         m_pDbgLog(pLog),
         m_bInit(false)
-    {  }
+    {          
+    }
 
 
     bool ClATCommandSerial::HaveBaudRate(unsigned long nBaudRate){
-        SERIAL.begin(nBaudRate);
+        Serial1.begin(nBaudRate);
         delay(250);
         sendCheckReply("ATE0");
         delay(100);
         bool bOK = sendCheckReply("AT");
-        SERIAL.begin(m_nBaudRate);
+        Serial1.begin(m_nBaudRate);
         delay(250);
         return bOK;
     }
 
     bool ClATCommandSerial::SetBaudRate(unsigned long nOldBaudRate, unsigned long nNewBaudRate){
-        SERIAL.begin(nOldBaudRate);
+        Serial1.begin(nOldBaudRate);
         delay(250);
         sendCheckReply("ATE0");
         delay(100);
@@ -35,7 +31,7 @@ namespace SIM7600MQTT
         sMsg += String(nNewBaudRate);
         sendCheckReply(sMsg.c_str(), "OK");
         delay(250);
-        SERIAL.begin(nNewBaudRate);
+        Serial1.begin(nNewBaudRate);
         delay(250);
         return sendCheckReply("AT");
     }
@@ -46,14 +42,6 @@ namespace SIM7600MQTT
         {
             return 0;
         }
-
-        // SERIAL.begin(m_nBaudRateInit);
-        // sendCheckReply("ATE0", "OK");
-        // delay(100);
-        // String sMsg(F("AT+IPRX="));
-        // sMsg += String(m_nBaudRate);
-        // delay(250);
-        // sendCheckReply(sMsg, "OK");
 
         m_bInit = true; //to prevent infinit loop
         if(HaveBaudRate(m_nBaudRateInit))
@@ -77,7 +65,7 @@ namespace SIM7600MQTT
     
             // delay(1000);
   
-            SERIAL.begin(m_nBaudRate);
+            Serial1.begin(m_nBaudRate);
             delay(250);
             sendCheckReply("AT+CRESET", "OK", 3000);
             bool bHaveReboot = false;
@@ -87,7 +75,7 @@ namespace SIM7600MQTT
             }
             if(!bHaveReboot){
                 if(m_pDbgLog){ m_pDbgLog->println(F("Try 115200"));}
-                SERIAL.begin(m_nBaudRateInit);
+                Serial1.begin(m_nBaudRateInit);
                 delay(250);
                 sendCheckReply("AT+CRESET", "OK", 3000);
                 for(unsigned int i = 0; i < 30; ++i){
@@ -138,8 +126,8 @@ namespace SIM7600MQTT
             break;
             }
 
-            while(SERIAL.available()) {
-            char c = SERIAL.read();
+            while(Serial1.available()) {
+            char c = Serial1.read();
             if (c == '\r') continue;
             if (c == 0xA) {
                 if (replyidx == 0)   // the first 0x0A is ignored
@@ -172,7 +160,7 @@ namespace SIM7600MQTT
         flushInput();
         if(m_pDbgLog){m_pDbgLog->print(F("\t---> "));m_pDbgLog->println(send);}
 
-        SERIAL.println(send);
+        Serial1.println(send);
         uint8_t l = readline(timeout);
         if(m_pDbgLog){m_pDbgLog->print(F("\t<--- "));m_pDbgLog->println(m_aReplybuffer);}
 
@@ -215,14 +203,14 @@ namespace SIM7600MQTT
     void ClATCommandSerial::println(const char* szMsg, int nDelay)
     {
         init();
-        SERIAL.println(szMsg);
+        Serial1.println(szMsg);
         delay(nDelay);
     }
 
     void ClATCommandSerial::println(String sMsg, int nDelay)
     {
         init();
-        SERIAL.println(sMsg);
+        Serial1.println(sMsg);
         delay(nDelay);
     }
 }

@@ -2,8 +2,7 @@
 #include <Arduino.h>
 
 namespace SIM7600MQTT
-{
-    
+{    
         bool ClMessageQueue::Init(ClMQTTClient* pMQTTClient, const String * pFeeds, unsigned int nFeeds, Stream * pDbgLog)
         {
             m_pDbgLog = pDbgLog;
@@ -11,7 +10,7 @@ namespace SIM7600MQTT
             //construct buffers
             m_nBufferCount = nFeeds;
             m_pBuffers = new StBuffer[m_nBufferCount];
-            for(int nI = 0; nI< m_nBufferCount; ++nI)
+            for(unsigned int nI = 0; nI< m_nBufferCount; ++nI)
             {
                 m_pBuffers[nI].clear(true);
                 if(pFeeds[nI].length() > MESSAGE_QUEUE_FEED_LEN -1){
@@ -40,7 +39,7 @@ namespace SIM7600MQTT
             }
         }
 
-        bool ClMessageQueue::AddMessageToBuffer(int nFeedIdx, const String& sMsg, unsigned long nTimestamp)
+        bool ClMessageQueue::AddMessageToBuffer(unsigned int nFeedIdx, const String& sMsg, unsigned long nTimestamp)
         {
                 m_pBuffers[nFeedIdx].m_oData[m_pBuffers[nFeedIdx].m_nBufferIdx] = sMsg;
                 m_pBuffers[nFeedIdx].m_aTimestamps[m_pBuffers[nFeedIdx].m_nBufferIdx] = nTimestamp;
@@ -152,7 +151,7 @@ namespace SIM7600MQTT
             return true;
         }
 
-        bool ClMessageQueue::AddMessage(int nFeedIdx, const String& sMsg, unsigned long nTimestamp, bool bDisconnectWhenSendFinished)
+        bool ClMessageQueue::AddMessage(unsigned int nFeedIdx, const String& sMsg, unsigned long nTimestamp, bool bDisconnectWhenSendFinished)
         {
 
             if(nFeedIdx >= m_nBufferCount){

@@ -14,8 +14,7 @@ class ClVoltageMeasurement{
     ClVoltageMeasurement(Stream * pDbgLog = nullptr) :
     m_pDbgLog(pDbgLog)
     {
-         analogReference(AR_INTERNAL);
-        //  pinMode(VOLTAGERELAY_PIN_ONOFF, OUTPUT);
+        analogReference(AR_INTERNAL);
     }
 
     float MeasureVoltage(unsigned int nNr=0){
