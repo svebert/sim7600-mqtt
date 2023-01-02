@@ -6,15 +6,16 @@
 #include "voltage.h"
 #include "reset.h"
 
-#define MQTT_PUB_TEMPERATURE_FEED "traeholm/temperature"
-#define MQTT_PUB_HUMIDITY_FEED "traeholm/humidity"
-#define MQTT_PUB_PRESSURE_FEED "traeholm/pressure"
-#define MQTT_PUB_STATUS_FEED "traeholm/status"
-#define MQTT_SUB_FEED_TIMING "traeholm/timing"
-#define MQTT_SUB_FEED_RELAY "traeholm/relay"
-#define MQTT_PUB_VOLTAGE1_FEED "traeholm/voltage1"
-#define MQTT_PUB_VOLTAGE2_FEED "traeholm/voltage2"
-#define MQTT_PUB_VOLTAGE3_FEED "traeholm/voltage3"
+#define MQTT_PUB_BASE "traeholm"
+#define MQTT_PUB_TEMPERATURE_FEED MQTT_PUB_BASE "/temperature"
+#define MQTT_PUB_HUMIDITY_FEED MQTT_PUB_BASE "/humidity"
+#define MQTT_PUB_PRESSURE_FEED MQTT_PUB_BASE "/pressure"
+#define MQTT_PUB_STATUS_FEED MQTT_PUB_BASE "/status"
+#define MQTT_SUB_FEED_TIMING MQTT_PUB_BASE "/timing"
+#define MQTT_SUB_FEED_RELAY MQTT_PUB_BASE "/relay"
+#define MQTT_PUB_VOLTAGE1_FEED MQTT_PUB_BASE "/voltage1"
+#define MQTT_PUB_VOLTAGE2_FEED MQTT_PUB_BASE "/voltage2"
+#define MQTT_PUB_VOLTAGE3_FEED MQTT_PUB_BASE "/voltage3"
 
 #define DEBUG //uncomment for debugging
 constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
