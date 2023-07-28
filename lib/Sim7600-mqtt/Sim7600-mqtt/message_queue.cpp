@@ -3,7 +3,7 @@
 
 namespace SIM7600MQTT
 {    
-        bool ClMessageQueue::Init(ClMQTTClient* pMQTTClient, const String * pFeeds, unsigned int nFeeds, Stream * pDbgLog)
+        bool ClMessageQueue::Init(ClMQTTClientI* pMQTTClient, const String * pFeeds, unsigned int nFeeds, Stream * pDbgLog)        
         {
             m_pDbgLog = pDbgLog;
             DeInit();           

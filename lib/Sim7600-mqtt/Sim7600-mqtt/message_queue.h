@@ -1,5 +1,4 @@
 #pragma once
-
 #include "mqtt.h"
 #include <Stream.h>
 
@@ -37,7 +36,7 @@ namespace SIM7600MQTT
     {
         public:
             ~ClMessageQueue(){DeInit();}
-            bool Init(ClMQTTClient* pMQTTClient, const String * pFeeds, unsigned int nFeeds, Stream * pDbgLog=nullptr);
+            bool Init(ClMQTTClientI* pMQTTClient, const String * pFeeds, unsigned int nFeeds, Stream * pDbgLog=nullptr);
             bool AddMessage(unsigned int nFeedIdx, const String& sMsg, unsigned long nTimestamp_tenth, bool bDisconnectWhenSendFinished=false);
 
             size_t m_nErrorCount{0};
@@ -48,7 +47,7 @@ namespace SIM7600MQTT
             Stream* m_pDbgLog{nullptr};
             StBuffer * m_pBuffers{nullptr};
             unsigned int m_nBufferCount{0};
-            ClMQTTClient * m_pMQTTClient{nullptr};
+            ClMQTTClientI * m_pMQTTClient{nullptr};
             const unsigned int m_nMaxReconnections{5};
             bool m_bSendJson{true};
 

@@ -266,51 +266,15 @@ namespace SIM7600MQTT
             return true;
 		}
     }
-    // int ClMQTTClient::get_subscribe(const String& sFeed, String& rsMsg){
 
-    //     delay(250);
-    //     String sATMsg(F("AT+CMQTTSUBTOPIC=0,"));
-    //     sATMsg += String(sFeed.length()) + F(",1");
-    //     //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
-    //     String sATReply;
-    //     m_oSerial.getReply(sATMsg.c_str(), sATReply);
-    //     if(sATReply == F("+CMQTTSUBTOPIC: 0,14"))
-    //     {
-    //         return 0;
-    //     }
-    //     delay(250);
-    //     m_oSerial.sendCheckReply(sFeed.c_str());
-    //     delay(250);
-    //     m_oSerial.sendCheckReply("AT+CMQTTSUB=0");
-    //     delay(250);
-    //     String sFeedGet = sFeed + F("/get");
-    //     sATMsg = F("AT+CMQTTTOPIC=0,");
-    //     sATMsg += String(sFeedGet.length());
-    //     //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
-    //     m_oSerial.getReply(sATMsg.c_str(), sATReply);
-    //     if(sATReply == F("+CMQTTTOPIC: 0,14"))
-    //     {
-    //         return 0;
-    //     }
-    //     delay(250);
-    //     m_oSerial.sendCheckReply(sFeedGet.c_str());
-
-    //     m_oSerial.sendCheckReply("AT+CMQTTPAYLOAD=0,1",">");
-    //     m_oSerial.sendCheckReply("1");
-
-    //     m_oSerial.sendCheckReply("AT+CMQTTPUB=0,1,100");
-    //     String sMsgBack;
-    //     bool bHaveMsg = false;
-    //     if(m_oSerial.readlines(sMsgBack, 2000)){
-    //         bHaveMsg = Parse(sMsgBack, rsMsg);
-    //     }
-    //     sATMsg = F("AT+CMQTTUNSUB=0,");
-    //     sATMsg += String(sFeed.length()) + F(",0");
-    //     //if(m_pDbgLog){m_pDbgLog->println(sATMsg);}
-    //     m_oSerial.sendCheckReply(sATMsg.c_str(), ">");
-    //     m_oSerial.sendCheckReply(sFeed.c_str());
-    //     return bHaveMsg ? 0 : -1;
-    // }
-
+    ClMQTTClientDummy::ClMQTTClientDummy(){}
     bool ClMQTTClient::isConnected() {return ConnectionStatus();}
+    int ClMQTTClientDummy::connect(unsigned int nRepeatScaler){return 0;}
+    int ClMQTTClientDummy::disconnect(){return 0;}
+    int ClMQTTClientDummy::publish(const char* szFeed, const char* szMessage){return 0;}
+    int ClMQTTClientDummy::subscribe_retained(const String& sFeed, String& rsMsg){return 0;}
+    bool ClMQTTClientDummy::GetMessage(const String& sFeed, unsigned long& rNumber){return true;}
+    bool ClMQTTClientDummy::GetMessage(const String& sFeed, String& sMsg){return true;}
+    bool ClMQTTClientDummy::isConnected(){return true;}
+    void ClMQTTClientDummy::reset(){}
 }

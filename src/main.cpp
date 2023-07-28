@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#define DEBUG //uncomment for debugging
+#define MQTT_DUMMY //uncomment to use mqtt dummy class
+
 #include "sim7600.h"
 #include "sensor_bme680.h"
 #include "sleep_time.h"
@@ -17,7 +20,6 @@
 #define MQTT_PUB_VOLTAGE2_FEED MQTT_PUB_BASE "/voltage2"
 #define MQTT_PUB_VOLTAGE3_FEED MQTT_PUB_BASE "/voltage3"
 
-#define DEBUG //uncomment for debugging
 constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
 //config end
 #ifdef DEBUG
@@ -79,7 +81,11 @@ delay(5000); //security wait
 	PRINTFLN("Serial ok");
 
 #ifdef DEBUG
+	#ifdef MQTT_DUMMY
+	g_pSim7600 = new SIM7600MQTT::ClMQTTClientDummy();
+	#else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, &Serial, HOME_AUTH_SIM7600_APN);
+	#endif
 #else
 	g_pSim7600 = new SIM7600MQTT::ClMQTTClient(g_sConnectionString, SIM7600_ARDUINO_TX, SIM7600_ARDUINO_RX, SIM7600_BAUD_RATE, nullptr, HOME_AUTH_SIM7600_APN);
 #endif
@@ -229,5 +235,5 @@ void loop()
 		g_pSim7600->reset();
 		g_pReset->HardReset();
 	}
-	sleep(true);
+	sleep(false);
 }
