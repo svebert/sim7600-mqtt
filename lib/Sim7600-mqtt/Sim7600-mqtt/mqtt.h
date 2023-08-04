@@ -17,6 +17,7 @@ class ClMQTTClientI
         virtual bool GetMessage(const String& sFeed, String& sMsg) = 0;
         virtual bool isConnected() = 0;
         virtual void reset() = 0;
+        virtual int read_gps(String &rsGPS) = 0;
 };
 
 
@@ -34,6 +35,7 @@ class ClMQTTClient : public ClMQTTClientI
         bool GetMessage(const String& sFeed, String& sMsg);
         bool isConnected();
         void reset();
+        int read_gps(String &rsGPS);
     private:
         bool flightMode();
         bool ConnectionStatus();
@@ -61,6 +63,7 @@ class ClMQTTClientDummy : public ClMQTTClientI
         bool GetMessage(const String& sFeed, String& sMsg);
         bool isConnected();
         void reset();
+        int read_gps(String &rsGPS);
 };
 
 }

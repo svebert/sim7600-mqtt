@@ -166,6 +166,32 @@ namespace SIM7600MQTT
         }
     }
 
+    int ClMQTTClient::read_gps(String &rsGPS)
+    {
+        String sReply;
+        m_oSerial.getReply("AT+CGPS?", sReply);
+        if(sReply != "+CGPS: 1,1"){
+            if(m_pDbgLog){m_pDbgLog->println("--enable gps");}
+            String sMsg(F("AT+CGPS=1,1"));
+            m_oSerial.sendCheckReply(sMsg.c_str(), ">");
+            delay(5000);
+        }
+        if(m_pDbgLog){m_pDbgLog->println("--read gps");}
+        String sMsg;
+        sMsg = F("AT+CGPSINFO");
+        m_oSerial.getReply(sMsg.c_str(), sReply);
+        if(sReply.length() > 11 && sReply.substring(0,11) == "+CGPSINFO: ")
+        {
+            rsGPS = sReply.substring(11);
+            return 0;
+        }
+        else
+        {
+            rsGPS = "";
+            return -1;
+        }
+    }
+
     int ClMQTTClient::publish(const char* szFeed, const char* szMessage)
     {
         if(m_pDbgLog){m_pDbgLog->println("--publish");}
@@ -190,6 +216,7 @@ namespace SIM7600MQTT
         else{
             return -2;
         }
+        return 0;
     }
 
     bool ClMQTTClient::Parse(const String& sIn, String& sOutMsg){
@@ -272,9 +299,10 @@ namespace SIM7600MQTT
     int ClMQTTClientDummy::connect(unsigned int nRepeatScaler){return 0;}
     int ClMQTTClientDummy::disconnect(){return 0;}
     int ClMQTTClientDummy::publish(const char* szFeed, const char* szMessage){return 0;}
-    int ClMQTTClientDummy::subscribe_retained(const String& sFeed, String& rsMsg){return 0;}
-    bool ClMQTTClientDummy::GetMessage(const String& sFeed, unsigned long& rNumber){return true;}
-    bool ClMQTTClientDummy::GetMessage(const String& sFeed, String& sMsg){return true;}
+    int ClMQTTClientDummy::subscribe_retained(const String& sFeed, String& rsMsg){rsMsg="test"; return 0;}
+    bool ClMQTTClientDummy::GetMessage(const String& sFeed, unsigned long& rNumber){rNumber=0; return true;}
+    bool ClMQTTClientDummy::GetMessage(const String& sFeed, String& sMsg){sMsg="test"; return true;}
+    int ClMQTTClientDummy::read_gps(String &rsGPS){ return 0;}
     bool ClMQTTClientDummy::isConnected(){return true;}
     void ClMQTTClientDummy::reset(){}
 }

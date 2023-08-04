@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#define DEBUG //uncomment for debugging
-#define MQTT_DUMMY //uncomment to use mqtt dummy class
+//#define DEBUG //uncomment for debugging
+//#define MQTT_DUMMY //uncomment to use mqtt dummy class
 
 #include "sim7600.h"
 #include "sensor_bme680.h"
@@ -9,7 +9,7 @@
 #include "voltage.h"
 #include "reset.h"
 
-#define MQTT_PUB_BASE "traeholm"
+#define MQTT_PUB_BASE "traeholm2"
 #define MQTT_PUB_TEMPERATURE_FEED MQTT_PUB_BASE "/temperature"
 #define MQTT_PUB_HUMIDITY_FEED MQTT_PUB_BASE "/humidity"
 #define MQTT_PUB_PRESSURE_FEED MQTT_PUB_BASE "/pressure"
@@ -19,6 +19,7 @@
 #define MQTT_PUB_VOLTAGE1_FEED MQTT_PUB_BASE "/voltage1"
 #define MQTT_PUB_VOLTAGE2_FEED MQTT_PUB_BASE "/voltage2"
 #define MQTT_PUB_VOLTAGE3_FEED MQTT_PUB_BASE "/voltage3"
+#define MQTT_PUB_GPS_FEED MQTT_PUB_BASE "/gps"
 
 constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
 //config end
@@ -70,7 +71,7 @@ void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCount
 }
 
 
-#define MESSAGE_FEED_COUNT 7
+#define MESSAGE_FEED_COUNT 8
 
 void setup() {
 delay(5000); //security wait
@@ -95,7 +96,8 @@ delay(5000); //security wait
 								MQTT_PUB_STATUS_FEED, 
 								MQTT_PUB_VOLTAGE1_FEED,
 								MQTT_PUB_VOLTAGE2_FEED,
-								MQTT_PUB_VOLTAGE3_FEED,};
+								MQTT_PUB_VOLTAGE3_FEED,
+								MQTT_PUB_GPS_FEED,};
 						
 	g_pMsgQueue = new SIM7600MQTT::ClMessageQueue();
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, MESSAGE_FEED_COUNT, &Serial)){
@@ -179,6 +181,7 @@ void loop()
 
 	PRINTFLN("add messages...");
 	bool bIsConnected, bDummy;
+	Check_Queue(true, bIsConnected);
 	unsigned long nTSSensor = tenth();
 	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2), nTSSensor), bIsConnected);
 	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1), nTSSensor), bDummy);
@@ -187,15 +190,20 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1), tenth()), bDummy);
 	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1), tenth()), bDummy);
 	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1), tenth()), bDummy);
-
+	String sGPS;
+	g_pSim7600->read_gps(sGPS);
+	Check_Queue(g_pMsgQueue->AddMessage(7, sGPS, tenth()), bDummy);
 	if(bIsConnected){
+
+		
+
 		PRINTF("get messages...");
 		unsigned long nLoopDelay;
 		PRINTF("timing:");
 		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_TIMING, nLoopDelay))
 		{
 			PRINTLN(String("delay=") + String(nLoopDelay) );
-			g_nLoopDelay = max(3000UL, min(600000UL, nLoopDelay));
+			//g_nLoopDelay = max(3000UL, min(600000UL, nLoopDelay));
 		}
 		else{
 			PRINTF("failed to get dealy");
@@ -235,5 +243,9 @@ void loop()
 		g_pSim7600->reset();
 		g_pReset->HardReset();
 	}
+	#ifdef DEBUG
 	sleep(false);
+	#else
+	sleep(true);
+	#endif
 }

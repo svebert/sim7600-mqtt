@@ -3,7 +3,7 @@
 #include <Stream.h>
 
 #ifndef MESSAGE_MAX_QUEUE_SIZE
-#define MESSAGE_MAX_QUEUE_SIZE 6
+#define MESSAGE_MAX_QUEUE_SIZE 7
 #endif
 #ifndef MESSAGE_QUEUE_FEED_LEN
 #define MESSAGE_QUEUE_FEED_LEN 25
