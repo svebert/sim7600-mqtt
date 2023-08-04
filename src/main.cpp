@@ -9,7 +9,7 @@
 #include "voltage.h"
 #include "reset.h"
 
-#define MQTT_PUB_BASE "traeholm2"
+#define MQTT_PUB_BASE "traeholm"
 #define MQTT_PUB_TEMPERATURE_FEED MQTT_PUB_BASE "/temperature"
 #define MQTT_PUB_HUMIDITY_FEED MQTT_PUB_BASE "/humidity"
 #define MQTT_PUB_PRESSURE_FEED MQTT_PUB_BASE "/pressure"
@@ -191,8 +191,10 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1), tenth()), bDummy);
 	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1), tenth()), bDummy);
 	String sGPS;
-	g_pSim7600->read_gps(sGPS);
-	Check_Queue(g_pMsgQueue->AddMessage(7, sGPS, tenth()), bDummy);
+	if(g_pSim7600->read_gps(sGPS) >= 0) 
+	{
+		Check_Queue(g_pMsgQueue->AddMessage(7, sGPS, tenth()), bDummy);
+	}
 	if(bIsConnected){
 
 		
@@ -203,7 +205,7 @@ void loop()
 		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_TIMING, nLoopDelay))
 		{
 			PRINTLN(String("delay=") + String(nLoopDelay) );
-			//g_nLoopDelay = max(3000UL, min(600000UL, nLoopDelay));
+			g_nLoopDelay = max(3000UL, min(600000UL, nLoopDelay));
 		}
 		else{
 			PRINTF("failed to get dealy");

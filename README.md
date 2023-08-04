@@ -7,4 +7,4 @@ Compiling, Upload etc. wird über die neuen Buttons in der untersten Symbolleist
 # Setup Hardware
 Das PCB Layout ist bei https://easyeda.com/editor hinterlegt: traeholm bzw. die überarbeitete Version Traeholm2. 
 # Debugging
-Projekt:
+

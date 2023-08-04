@@ -180,9 +180,9 @@ namespace SIM7600MQTT
         String sMsg;
         sMsg = F("AT+CGPSINFO");
         m_oSerial.getReply(sMsg.c_str(), sReply);
-        if(sReply.length() > 11 && sReply.substring(0,11) == "+CGPSINFO: ")
+        if(sReply.length() > 25 && sReply.substring(0,11) == "+CGPSINFO: ")
         {
-            rsGPS = sReply.substring(11);
+            rsGPS = "\"" + sReply.substring(11) + "\"";
             return 0;
         }
         else
