@@ -14,7 +14,7 @@ namespace SIM7600MQTT
             {
                 m_pBuffers[nI].clear(true);
                 if(pFeeds[nI].length() > MESSAGE_QUEUE_FEED_LEN -1){
-                    if(m_pDbgLog){m_pDbgLog->println("Error: feed name is too long");}
+                    if(m_pDbgLog){m_pDbgLog->println(F("Error: feed name is too long"));}
                     return false;
                 }           
                 strlcpy(m_pBuffers[nI].m_sFeed, pFeeds[nI].c_str(), MESSAGE_QUEUE_FEED_LEN);
@@ -73,7 +73,7 @@ namespace SIM7600MQTT
 
             if(bDisconnectWhenSendFinished)
             {
-                if(m_pDbgLog){m_pDbgLog->println("MsgQueue -> disconnect");}
+                if(m_pDbgLog){m_pDbgLog->println(F("MsgQueue -> disconnect"));}
                 if(m_pMQTTClient->disconnect() != 0){
                     m_nConnectionError = 2;
                     return false;

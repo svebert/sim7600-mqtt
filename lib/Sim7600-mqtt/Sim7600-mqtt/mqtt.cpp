@@ -170,17 +170,17 @@ namespace SIM7600MQTT
     {
         String sReply;
         m_oSerial.getReply("AT+CGPS?", sReply);
-        if(sReply != "+CGPS: 1,1"){
-            if(m_pDbgLog){m_pDbgLog->println("--enable gps");}
+        if(sReply != F("+CGPS: 1,1")){
+            if(m_pDbgLog){m_pDbgLog->println(F("--enable gps"));}
             String sMsg(F("AT+CGPS=1,1"));
             m_oSerial.sendCheckReply(sMsg.c_str(), ">");
             delay(5000);
         }
-        if(m_pDbgLog){m_pDbgLog->println("--read gps");}
+        if(m_pDbgLog){m_pDbgLog->println(F("--read gps"));}
         String sMsg;
         sMsg = F("AT+CGPSINFO");
         m_oSerial.getReply(sMsg.c_str(), sReply);
-        if(sReply.length() > 25 && sReply.substring(0,11) == "+CGPSINFO: ")
+        if(sReply.length() > 25 && sReply.substring(0,11) == F("+CGPSINFO: "))
         {
             rsGPS = "\"" + sReply.substring(11) + "\"";
             return 0;
@@ -194,7 +194,7 @@ namespace SIM7600MQTT
 
     int ClMQTTClient::publish(const char* szFeed, const char* szMessage)
     {
-        if(m_pDbgLog){m_pDbgLog->println("--publish");}
+        if(m_pDbgLog){m_pDbgLog->println(F("--publish"));}
         String sMsg(F("AT+CMQTTTOPIC=0,"));
         sMsg += String(strlen(szFeed));
         if(m_pDbgLog){m_pDbgLog->println(szFeed);}
@@ -206,10 +206,10 @@ namespace SIM7600MQTT
         m_oSerial.sendCheckReply(szMessage);
         String sReply;
         m_oSerial.getReply("AT+CMQTTPUB=0,1,100", sReply);
-        if(sReply == "OK" || sReply == "+CMQTTPUB: 0,0"){
+        if(sReply == "OK" || sReply == F("+CMQTTPUB: 0,0")){
             return 0;
         }
-        else if(sReply == "+CMQTTPUB: 0,18" || sReply == "+CMQTTPUB: 0,14"){
+        else if(sReply == F("+CMQTTPUB: 0,18") || sReply == F("+CMQTTPUB: 0,14")){
             delay(1000);
             return -1;
         }

@@ -1,5 +1,5 @@
 #include <Arduino.h>
-//#define DEBUG //uncomment for debugging
+#define DEBUG //uncomment for debugging
 //#define MQTT_DUMMY //uncomment to use mqtt dummy class
 
 #include "sim7600.h"
@@ -9,7 +9,7 @@
 #include "voltage.h"
 #include "reset.h"
 
-#define MQTT_PUB_BASE "traeholm"
+#define MQTT_PUB_BASE "traeholm2"
 #define MQTT_PUB_TEMPERATURE_FEED MQTT_PUB_BASE "/temperature"
 #define MQTT_PUB_HUMIDITY_FEED MQTT_PUB_BASE "/humidity"
 #define MQTT_PUB_PRESSURE_FEED MQTT_PUB_BASE "/pressure"
@@ -21,7 +21,9 @@
 #define MQTT_PUB_VOLTAGE3_FEED MQTT_PUB_BASE "/voltage3"
 #define MQTT_PUB_GPS_FEED MQTT_PUB_BASE "/gps"
 
-constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
+#define MQTT_NOSEND_RESET_THRESHOLD 3
+
+//constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
 //config end
 #ifdef DEBUG
 #define PRINTF(X) Serial.print(F(X));
@@ -35,18 +37,39 @@ constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MA
 #define PRINTLN(X)
 #endif
 
-void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected){
+
+#ifdef __arm__
+// should use uinstd.h to define sbrk but Due causes a conflict
+extern "C" char* sbrk(int incr);
+#else  // __ARM__
+extern char *__brkval;
+#endif  // __arm__
+
+int freeMemory() {
+  char top;
+#ifdef __arm__
+  return &top - reinterpret_cast<char*>(sbrk(0));
+#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
+  return &top - __brkval;
+#else  // __arm__
+  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
+#endif  // __arm__
+}
+
+void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected, unsigned int& nNoSendCount){
 	bIsConnected = false;
 	if(g_pMsgQueue->m_nConnectionError == 1){
-		PRINTFLN("!!failed to connect");
+		PRINTFLN(F("!!failed to connect"));
+		nNoSendCount++;
 	}
 	else if(g_pMsgQueue->m_nConnectionError == 2){
-		PRINTFLN("!!failed to disconnect");
+		PRINTFLN(F("!!failed to disconnect"));
 	}
 	else{
 		if(g_pMsgQueue->m_nErrorCount > 0){
 
 			PRINTLN(String(F("!!Failed to send all messages: ")) + String(g_pMsgQueue->m_nErrorCount) + String(F("/")) + String(g_pMsgQueue->m_nPublishCount));
+			nNoSendCount++;
 			if(g_pMsgQueue->m_nPublishCount > 0){
 				bIsConnected = true;
 			}
@@ -56,18 +79,21 @@ void Check_Queue(bool /*bReturnQueue*/, bool& bIsConnected){
 		}
 		else{
 			PRINTFLN("!!send");
+			nNoSendCount = 0;
 			bIsConnected = true;
 		}
 	}	
 }
 
-void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCounter, bool bPowerRelay, String &sJson){
-	sJson = "{";
-	sJson += "\"error\": " + String(nErrorCode);
-	sJson += ", \"delay\": " + String(nDelay);
-	sJson += ", \"loop\": " + String(nLoopCounter);
-	sJson += ", \"powerrelay\": " +String(bPowerRelay ? 1 : 0);
-	sJson += "}";
+void CreateStatus(int nErrorCode, unsigned long nDelay, unsigned long nLoopCounter,	bool bPowerRelay, 
+				int nFreeMemory, String &sJson){
+	sJson = String(F("{"));
+	sJson += String(F("\"error\": ")) + String(nErrorCode);
+	sJson += String(F(", \"delay\": ")) + String(nDelay);
+	sJson += String(F(", \"loop\": ")) + String(nLoopCounter);
+	sJson += String(F(", \"powerrelay\": ")) +String(bPowerRelay ? 1 : 0);
+	sJson += String(F(", \"mem\": ")) + String(nFreeMemory);
+	sJson += String(F("}"));
 }
 
 
@@ -103,7 +129,7 @@ delay(5000); //security wait
 	if(!g_pMsgQueue->Init(g_pSim7600, cpFeeds, MESSAGE_FEED_COUNT, &Serial)){
 		 PRINTFLN("Could not init MsgQueue");			
 	}
-	PRINTFLN("g_pMsgQueue ok");
+	PRINTFLN(F("g_pMsgQueue ok"));
 	g_pBME680 = new ClBME680Wrapper();
 	if(!g_pBME680->init()){
 		 PRINTFLN("Could not find a valid BME680 sensor, check wiring!")
@@ -133,6 +159,7 @@ unsigned long g_nLoopDelay{5000};
 unsigned long g_nLoopCount{0};
 unsigned long g_nCurrentTimeStamp_tenth{0};
 unsigned long g_nMillis0{0};
+unsigned int g_nNoSendCount{0};
 
 void ISR(){
 	digitalWrite(LED_BUILTIN, HIGH);
@@ -150,7 +177,7 @@ void sleep(bool bEnergySavingMode=true){
 		unsigned long nSleepSeconds = g_nLoopDelay/1000UL;
 		uint8_t nSleepMinutes = nSleepSeconds/60;
 		uint8_t nSleepSeconds_uint8 = static_cast<uint8_t>(nSleepSeconds%60);
-		PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String("min ") + String(nSleepSeconds_uint8) + F("s"));
+		PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String(F("min ")) + String(nSleepSeconds_uint8) + F("s"));
 		g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds_uint8);
 		#ifdef MKRZERO
 		g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
@@ -170,7 +197,7 @@ void loop()
 {
 	g_nMillis0 = millis();
 	int nErrorCode = 0;
-	PRINTLN(String("measure(") + String(g_nLoopCount) + String(")..."));
+	PRINTLN(String(F("measure(")) + String(g_nLoopCount) + String(F(")...")));
 	if(!g_pBME680->performReading()){
 		PRINTFLN("Failed reading BME680 sensor");nErrorCode=1;
 		if(!g_pBME680->init()){
@@ -181,34 +208,34 @@ void loop()
 
 	PRINTFLN("add messages...");
 	bool bIsConnected, bDummy;
-	Check_Queue(true, bIsConnected);
+	//Check_Queue(true, bIsConnected, g_nNoSendCount);
 	unsigned long nTSSensor = tenth();
-	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2), nTSSensor), bIsConnected);
-	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1), nTSSensor), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2), nTSSensor), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2), nTSSensor), bIsConnected, g_nNoSendCount);
+	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1), nTSSensor), bDummy, g_nNoSendCount);
+	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2), nTSSensor), bDummy, g_nNoSendCount);
 
-	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1), tenth()), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1), tenth()), bDummy);
-	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1), tenth()), bDummy);
+	Check_Queue(g_pMsgQueue->AddMessage(4, String(g_pVoltage->MeasureVoltage(0), 1), tenth()), bDummy, g_nNoSendCount);
+	Check_Queue(g_pMsgQueue->AddMessage(5, String(g_pVoltage->MeasureVoltage(1), 1), tenth()), bDummy, g_nNoSendCount);
+	Check_Queue(g_pMsgQueue->AddMessage(6, String(g_pVoltage->MeasureVoltage(2), 1), tenth()), bDummy, g_nNoSendCount);
 	String sGPS;
 	if(g_pSim7600->read_gps(sGPS) >= 0) 
 	{
-		Check_Queue(g_pMsgQueue->AddMessage(7, sGPS, tenth()), bDummy);
+		Check_Queue(g_pMsgQueue->AddMessage(7, sGPS, tenth()), bDummy, g_nNoSendCount);
 	}
-	if(bIsConnected){
+	if(bIsConnected){		
 
-		
-
-		PRINTF("get messages...");
+		PRINTLN("get messages...");
 		unsigned long nLoopDelay;
 		PRINTF("timing:");
 		if(g_pSim7600->GetMessage(MQTT_SUB_FEED_TIMING, nLoopDelay))
 		{
 			PRINTLN(String("delay=") + String(nLoopDelay) );
 			g_nLoopDelay = max(3000UL, min(600000UL, nLoopDelay));
+			g_nNoSendCount = 0;
 		}
 		else{
-			PRINTF("failed to get dealy");
+			PRINTLN("failed to get delay");		
+			g_nNoSendCount++;	
 			nErrorCode=3;
 		}
 		String sRelayMsg;
@@ -217,16 +244,16 @@ void loop()
 		{
 			PRINTLN(sRelayMsg);
 			if(sRelayMsg == "ON"){
-				PRINTF("relay on!");
+				PRINTFLN("relay on!");
 				g_pPowerRelay->On();
 			}
 			else if(sRelayMsg == "OFF"){
-				PRINTF("relay off!");
+				PRINTFLN("relay off!");
 				g_pPowerRelay->Off();
 			}
 		}
 		else{
-			PRINTF("failed to get relay state");
+			PRINTFLN("failed to get relay state");
 			nErrorCode=4;
 		}
 
@@ -235,16 +262,20 @@ void loop()
 
 	g_pPowerRelay->Check();	
 
-	String sStatusJSON;
-	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pPowerRelay->Status(), sStatusJSON);
-	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy);
-	g_nLoopCount++;
+	String sStatusJSON;	
+	int nMemory = freeMemory();
+	PRINTLN(String(F("memory=")) + String(nMemory) );
+	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pPowerRelay->Status(), nMemory, sStatusJSON);
+	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy, g_nNoSendCount);
 
-	if( g_nLoopCount >= g_nResetCount){
+	if(g_nNoSendCount > MQTT_NOSEND_RESET_THRESHOLD){
 		PRINTF("RESET!");
 		g_pSim7600->reset();
 		g_pReset->HardReset();
 	}
+
+	g_nLoopCount++;
+
 	#ifdef DEBUG
 	sleep(false);
 	#else

@@ -15,5 +15,5 @@
 SIM7600MQTT::ClMQTTClientI * g_pSim7600;
 SIM7600MQTT::ClMessageQueue * g_pMsgQueue;
 
-const String g_sConnectionString("AT+CMQTTCONNECT=0,\"tcp://" SIM7600_MQTT_HOST ":" SIM7600_MQTT_PORT "\",90,1,\"" SIM7600_MQTT_HOST_USERNAME "\",\"" SIM7600_MQTT_HOST_KEY "\"");
+const String g_sConnectionString(F("AT+CMQTTCONNECT=0,\"tcp://" SIM7600_MQTT_HOST ":" SIM7600_MQTT_PORT "\",90,1,\"" SIM7600_MQTT_HOST_USERNAME "\",\"" SIM7600_MQTT_HOST_KEY "\""));
 
