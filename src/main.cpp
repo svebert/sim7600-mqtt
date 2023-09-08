@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#define DEBUG //uncomment for debugging
+//#define DEBUG //uncomment for debugging
 //#define MQTT_DUMMY //uncomment to use mqtt dummy class
 
 #include "sim7600.h"
@@ -184,13 +184,12 @@ void sleep(bool bEnergySavingMode=true){
 		g_rtc.attachInterrupt(ISR);
 		#endif
 		digitalWrite(LED_BUILTIN, LOW);
-		g_nCurrentTimeStamp_tenth =  tenth() + g_nLoopDelay/100;
 		g_rtc.standbyMode();
 	}
 	else{
-		g_nCurrentTimeStamp_tenth =  tenth() + g_nLoopDelay/100;
 		delay(g_nLoopDelay);
 	}
+	g_nCurrentTimeStamp_tenth =  tenth() + g_nLoopDelay/100;
 }
 
 void loop() 
