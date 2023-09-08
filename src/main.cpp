@@ -208,8 +208,8 @@ void loop()
 
 	PRINTFLN("add messages...");
 	bool bIsConnected, bDummy;
-	//Check_Queue(true, bIsConnected, g_nNoSendCount);
 	unsigned long nTSSensor = tenth();
+
 	Check_Queue(g_pMsgQueue->AddMessage(0, String(g_pBME680->temperature(), 2), nTSSensor), bIsConnected, g_nNoSendCount);
 	Check_Queue(g_pMsgQueue->AddMessage(1, String(g_pBME680->humidity(), 1), nTSSensor), bDummy, g_nNoSendCount);
 	Check_Queue(g_pMsgQueue->AddMessage(2, String(g_pBME680->pressure(), 2), nTSSensor), bDummy, g_nNoSendCount);
@@ -259,7 +259,6 @@ void loop()
 
 		g_pSim7600->disconnect();
 	}
-
 	g_pPowerRelay->Check();	
 
 	String sStatusJSON;	
@@ -269,6 +268,10 @@ void loop()
 	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy, g_nNoSendCount);
 
 	if(g_nNoSendCount > MQTT_NOSEND_RESET_THRESHOLD){
+		PRINTF("RESET SIM!");
+		g_pSim7600->reset();
+	}
+	if(nMemory < 2000){
 		PRINTF("RESET!");
 		g_pSim7600->reset();
 		g_pReset->HardReset();

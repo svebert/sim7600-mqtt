@@ -108,23 +108,23 @@ namespace SIM7600MQTT
             for(size_t nFeed = 0; nFeed < m_nBufferCount; ++nFeed)
             {
                 if(m_pBuffers[nFeed].m_nBufferIdx > 0){
-                    String sJsonMsg("[");
+                    String sJsonMsg(F("["));
                     unsigned long nTSend = m_pBuffers[nFeed].m_aTimestamps[m_pBuffers[nFeed].m_nBufferIdx - 1];
                     for(size_t nBuffer = 0; nBuffer < m_pBuffers[nFeed].m_nBufferIdx; ++nBuffer)
                     {
-                        String sElement("{\"value\": ");
+                        String sElement(F("{\"value\": "));
                         sElement += m_pBuffers[nFeed].m_oData[nBuffer];
-                        sElement += String(", \"offset\": ");
+                        sElement += String(F(", \"offset\": "));
                         sElement += String( - static_cast<long>((nTSend - m_pBuffers[nFeed].m_aTimestamps[nBuffer])*100));
                         if(nBuffer < m_pBuffers[nFeed].m_nBufferIdx -1){
-                            sElement += "},";
+                            sElement += F("},");
                         }
                         else{
-                            sElement += "}";
+                            sElement += F("}");
                         }
                         sJsonMsg += sElement;
                     }          
-                    sJsonMsg += "]";      
+                    sJsonMsg += F("]");      
                     m_nPublishCount++;
                     int nErr = 0;
                     nErr = m_pMQTTClient->publish(&(m_pBuffers[nFeed].m_sFeed[0]), sJsonMsg.c_str());
