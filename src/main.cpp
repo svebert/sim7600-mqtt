@@ -9,7 +9,7 @@
 #include "voltage.h"
 #include "reset.h"
 
-#define MQTT_PUB_BASE "traeholm2"
+#define MQTT_PUB_BASE "traeholm"
 #define MQTT_PUB_TEMPERATURE_FEED MQTT_PUB_BASE "/temperature"
 #define MQTT_PUB_HUMIDITY_FEED MQTT_PUB_BASE "/humidity"
 #define MQTT_PUB_PRESSURE_FEED MQTT_PUB_BASE "/pressure"
@@ -21,7 +21,7 @@
 #define MQTT_PUB_VOLTAGE3_FEED MQTT_PUB_BASE "/voltage3"
 #define MQTT_PUB_GPS_FEED MQTT_PUB_BASE "/gps"
 
-#define MQTT_NOSEND_RESET_THRESHOLD 3
+#define MQTT_NOSEND_RESET_THRESHOLD 6
 
 //constexpr unsigned long g_nResetCount = ((400/MESSAGE_MAX_QUEUE_SIZE)*MESSAGE_MAX_QUEUE_SIZE);
 //config end
@@ -173,18 +173,28 @@ unsigned long tenth(){
 void sleep(bool bEnergySavingMode=true){
 	if(bEnergySavingMode){
 		g_rtc.setTime(0, 0, 0);
-		g_rtc.setDate(24,5,22);
+		g_rtc.setDate(24,5,23);
 		unsigned long nSleepSeconds = g_nLoopDelay/1000UL;
-		uint8_t nSleepMinutes = nSleepSeconds/60;
+		uint8_t nSleepMinutes = static_cast<uint8_t>((nSleepSeconds/60) % 60);
 		uint8_t nSleepSeconds_uint8 = static_cast<uint8_t>(nSleepSeconds%60);
-		PRINTLN(String(F("Wait for ")) + String(nSleepMinutes) + String(F("min ")) + String(nSleepSeconds_uint8) + F("s"));
-		g_rtc.setAlarmTime(0, nSleepMinutes, nSleepSeconds_uint8);
+		uint8_t nSleepHours = static_cast<uint8_t>((nSleepSeconds / 3600) % 3600);
+		PRINTLN(String(F("Wait for ")) + String(nSleepHours) + F(":") + String(nSleepMinutes) + F(":") + String(nSleepSeconds_uint8))
+		g_rtc.setAlarmTime(nSleepHours, nSleepMinutes, nSleepSeconds_uint8);
 		#ifdef MKRZERO
 		g_rtc.enableAlarm(g_rtc.MATCH_HHMMSS);
 		g_rtc.attachInterrupt(ISR);
 		#endif
-		digitalWrite(LED_BUILTIN, LOW);
+		#ifdef DEBUG
+		USBDevice.detach();
+		USBDevice.end();
+		#endif
 		g_rtc.standbyMode();
+		#ifdef DEBUG
+		USBDevice.init();
+		USBDevice.attach();
+		Serial.begin(SIM7600_BAUD_RATE);
+		#endif
+		digitalWrite(LED_BUILTIN, LOW);
 	}
 	else{
 		delay(g_nLoopDelay);
@@ -265,15 +275,13 @@ void loop()
 	PRINTLN(String(F("memory=")) + String(nMemory) );
 	CreateStatus(nErrorCode, g_nLoopDelay, g_nLoopCount, g_pPowerRelay->Status(), nMemory, sStatusJSON);
 	Check_Queue(g_pMsgQueue->AddMessage(3, sStatusJSON, tenth(), true), bDummy, g_nNoSendCount);
+	
 
-	if(g_nNoSendCount > MQTT_NOSEND_RESET_THRESHOLD){
+	if(g_nNoSendCount > MQTT_NOSEND_RESET_THRESHOLD || nMemory < 2000){
 		PRINTF("RESET SIM!");
 		g_pSim7600->reset();
-	}
-	if(nMemory < 2000){
-		PRINTF("RESET!");
-		g_pSim7600->reset();
 		g_pReset->HardReset();
+		g_nNoSendCount = 0;
 	}
 
 	g_nLoopCount++;
